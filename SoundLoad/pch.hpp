@@ -5,13 +5,15 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <string_view>
 #include <filesystem>
 #include <unordered_map>
+#include <regex>
 
-#include "tpropertymap.h"
-#include "tstringlist.h"
-#include "tvariant.h"
+#include "textidentificationframe.h"
+#include "attachedpictureframe.h"
+#include "id3v2framefactory.h"
+#include "id3v2tag.h"
+#include "mpegfile.h"
 #include "fileref.h"
 #include "tag.h"
 

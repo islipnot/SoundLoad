@@ -20,7 +20,51 @@ std::string GetRawJson(const std::string track, const std::string& CID)
 	return response.text;
 }
 
-bool DownloadTrack(const json data, Cfg& cfg)
+void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
+{
+	// Creating an ID3v2 tag for the MP3
+
+	TagLib::MPEG::File file(path.c_str());
+	TagLib::ID3v2::Tag* tag;
+
+	if (!file.hasID3v2Tag()) tag = file.ID3v2Tag(true);
+	else tag = file.ID3v2Tag();
+
+	// Setting track properties
+
+	std::string value = cfg.title.empty() ? std::string(data["title"]) : cfg.title;
+
+	tag->setTitle(value.c_str());
+	tag->setAlbum(cfg.album.empty() ? value.c_str() : cfg.album.c_str());
+
+	value = cfg.cArtists.empty() ? std::string(data["user"]["username"]) : cfg.cArtists;
+
+	tag->setArtist(value.c_str());
+
+	if (data.contains("description"))
+	{
+		tag->setComment(std::string(data["description"]));
+	}
+
+	// Getting track cover
+
+	value = data["artwork_url"];
+	value = std::regex_replace(value, std::regex("-large."), "-t500x500.");
+
+	cpr::Response response = cpr::Get(cpr::Url{ value });
+
+	auto cover = new TagLib::ID3v2::AttachedPictureFrame;
+	cover->setMimeType("image/jpeg");
+	cover->setType(TagLib::ID3v2::AttachedPictureFrame::FrontCover);
+	cover->setDescription("Cover");
+	cover->setPicture(TagLib::ByteVector(response.text.data(), response.text.size()));
+
+	tag->addFrame(cover);
+
+	file.save();
+}
+
+bool DownloadTrack(const json& data, Cfg& cfg)
 {
 	// Getting the streaming url
 
@@ -42,7 +86,7 @@ bool DownloadTrack(const json data, Cfg& cfg)
 	// Requesting a download link
 
 	cpr::Response response = cpr::Get(cpr::Url{ url });
-	if (response.status_code > 399)
+	if (response.status_code != 200)
 	{
 		ERR_MSG("Failed to download track");
 		return false;
@@ -53,7 +97,7 @@ bool DownloadTrack(const json data, Cfg& cfg)
 	DBG_MSG("Downloading from: " + url);
 
 	response = cpr::Get(cpr::Url{ url });
-	if (response.status_code > 399)
+	if (response.status_code != 200)
 	{
 		ERR_MSG("Failed to download track");
 		return false;
@@ -72,6 +116,11 @@ bool DownloadTrack(const json data, Cfg& cfg)
 
 	std::ofstream track(path, std::ios::binary | std::ios::trunc);
 	track.write(response.text.data(), response.text.size());
+	track.close();
+
+	// Handling metadata and MP3 tag
+
+	HandleMetadata(data, cfg, path);
 
 	return true;
 }
