@@ -48,6 +48,13 @@ void Cfg::SaveCfg(std::ofstream cfg)
 		DBG_MSG("Saved output dir to cfg.txt");
 	}
 
+	if (!(flags & HasImg))
+	{
+		cfg << "img " << cover << '\n';
+
+		DBG_MSG("Saved cover dir to cfg.txt");
+	}
+
 	cfg.close();
 }
 

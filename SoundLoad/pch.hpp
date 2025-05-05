@@ -37,3 +37,10 @@
 	#define DBG_MSG(output)
 
 #endif
+
+
+/* TODO
+- fix filesystem errors when ppl include things like stars in track names
+- global environment var
+- sharex 
+*/

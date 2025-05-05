@@ -9,7 +9,7 @@ std::string GetRawJson(const std::string track, const std::string& CID)
 	const std::string url = "https://api-v2.soundcloud.com/resolve?url=" + track + "&client_id=" + CID;
 	cpr::Response response = cpr::Get(cpr::Url{ url });
 
-	if (response.status_code > 399)
+	if (response.status_code != 200)
 	{
 		ERR_MSG("Track resolution failed");
 		ERR_INFO(url + '\n' + response.error.message);
@@ -48,13 +48,16 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	// Getting track cover
 
-	value = std::regex_replace(std::string(data["artwork_url"]), std::regex("-large."), "-t500x500.");
-	cpr::Response response = cpr::Get(cpr::Url{ value });
+	if (cfg.cover.empty())
+	{
+		value = std::regex_replace(std::string(data["artwork_url"]), std::regex("-large."), "-original.");
+		cpr::Response response = cpr::Get(cpr::Url{ value });
 
-	auto cover = new TagLib::ID3v2::AttachedPictureFrame;
-	cover->setPicture(TagLib::ByteVector(response.text.data(), response.text.size()));
+		auto cover = new TagLib::ID3v2::AttachedPictureFrame;
+		cover->setPicture(TagLib::ByteVector(response.text.data(), response.text.size()));
 
-	tag->addFrame(cover);
+		tag->addFrame(cover);
+	}
 
 	file.save();
 }
@@ -68,7 +71,7 @@ bool DownloadTrack(const json& data, Cfg& cfg)
 
 	std::string url;
 
-	for (int i = 0; i < 3; ++i)
+	for (int i = 0, sz = data["media"]["transcodings"].size(); i < sz; ++i)
 	{
 		if (data["media"]["transcodings"][i]["format"]["protocol"] == "progressive")
 		{

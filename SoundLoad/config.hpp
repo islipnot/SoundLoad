@@ -51,8 +51,7 @@ public:
 	std::string album;    // Album
 
 	std::string output; // MP3 output directory
-	std::string cover;  // The path for the MP3 cover
+	std::string cover;  // Path for MP3 cover
 
-	bool CoverLink = true; // If true, cover is a link
 	bool error = false;
 };
