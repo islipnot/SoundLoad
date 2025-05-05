@@ -12,13 +12,13 @@
 *
 * ADDED:
 *
-* --client  <client_id>
+* --CID     <client_id>
 * --fName   <mp3 file name>
 * --title   <mp3 title property>
 * --cArtist <contributing artists property> (SURROUND IN QUOTES IF MULTIPLE ARTISTS)
 * --artist  <album artist property>
 * --album   <album property>
-* --output  <final mp3 output dir> (defaults to command directory at runtime)
+* --out     <final mp3 output dir> (defaults to command directory at runtime)
 * --cover   <cover path>
 * --save    (saves args to cfg)
 *

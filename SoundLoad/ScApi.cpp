@@ -31,7 +31,7 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	std::string value = cfg.title.empty() ? std::string(data["title"]) : cfg.title;
 
-	tag->setTitle(value.c_str());
+	tag->setTitle(value.c_str()); // if a title wasn't provided it'll use the file name (config.cpp/Cfg::Cfg)
 
 	if (!cfg.album.empty()) value = cfg.album;
 

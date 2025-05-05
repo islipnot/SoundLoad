@@ -58,13 +58,13 @@ Cfg::Cfg(int argc, char* argv[])
 	bool save = false;
 	
 	const std::unordered_map<std::string, std::function<void(const char*)>> map = {
-		{ "--client",  [this] (const char* v) { CID      = v; }},
+		{ "--cid",     [this] (const char* v) { CID      = v; }},
 		{ "--fname",   [this] (const char* v) { fName    = v; }},
 		{ "--title",   [this] (const char* v) { title    = v; }},
 		{ "--album",   [this] (const char* v) { album    = v; }},
 		{ "--cartist", [this] (const char* v) { cArtists = v; }},
 		{ "--artist",  [this] (const char* v) { artist   = v; }},
-		{ "--output",  [this] (const char* v) { output   = v; }},
+		{ "--out",     [this] (const char* v) { output   = v; }},
 		{ "--cover",   [this] (const char* v) { cover    = v; }},
 		{ "--save",    [&save](const char* v) { save     = 1; }}
 	};
@@ -114,5 +114,6 @@ Cfg::Cfg(int argc, char* argv[])
 	ReadCfg(std::ifstream(name));
 	if (save) SaveCfg(std::ofstream(name));
 
+	if (title.empty()) title = fName;
 	if (!output.empty() && output.back() != '\\') output.push_back('\\');
 }
