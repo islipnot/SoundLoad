@@ -8,6 +8,23 @@
 *
 */
 
+/* ARGUMENTS
+*
+* ADDED:
+*
+* --client  <client_id>
+* --fName   <mp3 file name>
+* --title   <mp3 title property>
+* --cArtist <contributing artists property> (SURROUND IN QUOTES IF MULTIPLE ARTISTS)
+* --artist  <album artist property>
+* --album   <album property>
+* --output  <final mp3 output dir> (defaults to command directory at runtime)
+* --cover   <cover path>
+* --save    (saves args to cfg)
+*
+* Above fields (besides client ID) are scraped from track page or left empty if not provided by the user
+*/
+
 class Cfg
 {
 	enum CfgFlags
@@ -19,16 +36,15 @@ class Cfg
 
 	int flags = 0;
 
-	bool OpenCfg(std::fstream&); // returns false if file failed to open
-	void ReadCfg(std::fstream&);
-	void SaveCfg(std::fstream&);
+	void ReadCfg(std::ifstream cfg);
+	void SaveCfg(std::ofstream cfg);
 
 public:
 
 	Cfg(int argc, char* argv[]);
 
 	std::string CID;      // SoundCloud client ID
-	std::string fName;    // File name
+	std::string path;     // File name
 	std::string title;    // Title
 	std::string cArtists; // Contributing artists
 	std::string artist;   // Album artist

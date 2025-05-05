@@ -22,11 +22,24 @@ std::string GetRawJson(const std::string track, const std::string& CID)
 
 bool DownloadTrack(const json data, Cfg& cfg)
 {
+	// Getting the streaming url
+
 	const int TrackID = data["id"];
 	const std::string TrackAuth = data["track_authorization"];
-	const std::string StreamUrl = data["media"]["transcodings"][1]["url"];
 
-	std::string url = StreamUrl + "?client_id=" + cfg.CID + "&track_authorization=" + TrackAuth;
+	std::string url;
+
+	for (int i = 0; i < 3; ++i)
+	{
+		if (data["media"]["transcodings"][i]["format"]["protocol"] == "progressive")
+		{
+			url = data["media"]["transcodings"][i]["url"];
+		}
+	}
+
+	url += ("?client_id=" + cfg.CID + "&track_authorization=" + TrackAuth);
+
+	// Requesting a download link
 
 	cpr::Response response = cpr::Get(cpr::Url{ url });
 	if (response.status_code > 399)
@@ -46,10 +59,9 @@ bool DownloadTrack(const json data, Cfg& cfg)
 		return false;
 	}
 
-	std::string fName = cfg.fName + ".mp3";
-	if (!cfg.output.empty()) fName.insert(0, cfg.output);
+	// Writing to output file
 
-	std::ofstream track(fName, std::ios::binary | std::ios::trunc);
+	std::ofstream track(cfg.path + ".mp3", std::ios::binary | std::ios::trunc);
 	track.write(response.text.data(), response.text.size());
 
 	return true;

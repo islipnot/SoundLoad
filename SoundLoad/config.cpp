@@ -1,23 +1,7 @@
 #include "pch.hpp"
 #include "config.hpp"
 
-bool Cfg::OpenCfg(std::fstream& FileBuf)
-{
-	constexpr const char* name = "cfg.txt";
-
-	if (!std::filesystem::exists(name))
-	{
-		std::ofstream cfg(name);
-		cfg.close();
-
-		DBG_MSG("Created cfg.txt");
-	}
-
-	FileBuf.open(name);
-	return !FileBuf.fail();
-}
-
-void Cfg::ReadCfg(std::fstream& cfg)
+void Cfg::ReadCfg(std::ifstream cfg)
 {
 	std::string value;
 
@@ -44,34 +28,38 @@ void Cfg::ReadCfg(std::fstream& cfg)
 			flags |= HasImg;
 		}
 	}
+
+	cfg.close();
 }
 
-void Cfg::SaveCfg(std::fstream& cfg)
+void Cfg::SaveCfg(std::ofstream cfg)
 {
 	if (!(flags & HasCID))
 	{
-		cfg << "cid " + CID;
+		cfg << "cid " << CID << '\n';
 
 		DBG_MSG("Saved CID to cfg.txt");
 	}
 
 	if (!(flags & HasOut))
 	{
-		cfg << "out " + output;
+		cfg << "out " << output << '\n';
 
 		DBG_MSG("Saved output dir to cfg.txt");
 	}
+
+	cfg.close();
 }
 
 Cfg::Cfg(int argc, char* argv[])
 {
-	// Getting argument values
+	// Reading arguments
 
 	bool save = false;
-
+	
 	const std::unordered_map<std::string, std::function<void(const char*)>> map = {
 		{ "--client",  [this] (const char* v) { CID      = v; }},
-		{ "--fname",   [this] (const char* v) { fName    = v; }},
+		{ "--fname",   [this] (const char* v) { path     = v; }},
 		{ "--title",   [this] (const char* v) { title    = v; }},
 		{ "--album",   [this] (const char* v) { album    = v; }},
 		{ "--cartist", [this] (const char* v) { cArtists = v; }},
@@ -113,19 +101,17 @@ Cfg::Cfg(int argc, char* argv[])
 
 	// Handling config
 
-	std::fstream cfg;
+	constexpr const char* name = "cfg.txt";
 
-	if (!OpenCfg(cfg))
+	if (!std::filesystem::exists(name))
 	{
-		ERR_MSG("Failed to open cfg.txt");
-
+		std::ofstream cfg(name);
 		cfg.close();
-		return;
+
+		DBG_MSG("Created cfg.txt");
 	}
 
-	ReadCfg(cfg);
-
-	if (save) SaveCfg(cfg);
-
-	cfg.close();
+	ReadCfg(std::ifstream(name));
+	if (save) SaveCfg(std::ofstream(name));
+	if (!output.empty()) path.insert(0, output);
 }
