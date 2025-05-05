@@ -59,7 +59,7 @@ Cfg::Cfg(int argc, char* argv[])
 	
 	const std::unordered_map<std::string, std::function<void(const char*)>> map = {
 		{ "--client",  [this] (const char* v) { CID      = v; }},
-		{ "--fname",   [this] (const char* v) { path     = v; }},
+		{ "--fname",   [this] (const char* v) { fName    = v; }},
 		{ "--title",   [this] (const char* v) { title    = v; }},
 		{ "--album",   [this] (const char* v) { album    = v; }},
 		{ "--cartist", [this] (const char* v) { cArtists = v; }},
@@ -113,5 +113,6 @@ Cfg::Cfg(int argc, char* argv[])
 
 	ReadCfg(std::ifstream(name));
 	if (save) SaveCfg(std::ofstream(name));
-	if (!output.empty()) path.insert(0, output);
+
+	if (!output.empty() && output.back() != '\\') output.push_back('\\');
 }

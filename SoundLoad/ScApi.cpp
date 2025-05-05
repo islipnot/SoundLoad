@@ -61,7 +61,16 @@ bool DownloadTrack(const json data, Cfg& cfg)
 
 	// Writing to output file
 
-	std::ofstream track(cfg.path + ".mp3", std::ios::binary | std::ios::trunc);
+	std::string path;
+
+	if (cfg.fName.empty()) path = data["title"];
+	else path = cfg.fName;
+
+	if (!cfg.output.empty()) path.insert(0, cfg.output);
+
+	path += ".mp3";
+
+	std::ofstream track(path, std::ios::binary | std::ios::trunc);
 	track.write(response.text.data(), response.text.size());
 
 	return true;

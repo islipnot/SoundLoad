@@ -44,7 +44,7 @@ public:
 	Cfg(int argc, char* argv[]);
 
 	std::string CID;      // SoundCloud client ID
-	std::string path;     // File name
+	std::string fName;     // File name
 	std::string title;    // Title
 	std::string cArtists; // Contributing artists
 	std::string artist;   // Album artist
