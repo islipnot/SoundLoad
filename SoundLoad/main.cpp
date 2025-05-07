@@ -6,8 +6,6 @@ using json = nlohmann::json;
 
 int main(int argc, char* argv[])
 {
-	// Handling arguments
-
 	if (argc < 2)
 	{
 		std::cerr << "ERROR: insufficient arguments\n";
@@ -18,14 +16,16 @@ int main(int argc, char* argv[])
 	
 	Cfg cfg(argc, argv);
 
-	if (cfg.error) return -1;
+	if (cfg.status & Cfg::Error) return -1;
+	if (cfg.status & Cfg::NoLink) return 0;
 
 	DBG_MSG("\n[*] SCRAPING TRACK DATA...\n");
 
 	const json data = json::parse(GetRawJson(argv[1], cfg.CID));
-	if (data.empty()) return -2;
 
-	if (!DownloadTrack(data, cfg)) return -3;
+	if (!DownloadTrack(data, cfg)) return -1;
+	
+	if (data.empty()) return -1;
 	
 	std::cout << "\n[!] SUCCESSFULLY DOWNLOADED TRACK!\n";
 

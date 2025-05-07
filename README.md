@@ -1,13 +1,26 @@
 # SoundLoad
-This project was made to automate the process of importing SoundCloud songs to Spotify local files, though what you use it for is your choice!
+The goal of this project is to help all SoundCloud users save their favorite songs with as much data as possible preserved. Spotify users also benefit from this, as they can effortlessly import a song to local files in seconds, where it would otherwise take several minutes if the song was downloaded and the metadata was all set manually.
 
 ## Arguments
 FIRST ARGUMENT MUST BE TRACK LINK
-- --CID     &lt;client ID&gt;
-- --fName   &lt;MP3 file name&gt;
-- --title   &lt;MP3 title property&gt;
-- --cArtist &lt;MP3 contributing artists property&gt;
-- --artist  &lt;MP3 album artist property&gt;
-- --album   &lt;MP3 album property&gt;
-- --out     &lt;Output directory&gt;
-- --save (save to cfg.txt)
+- ```-CID     <client ID>```
+- ```-fName   <MP3 file name&>```
+- ```-title   <MP3 title property>```
+- ```-artists <MP3 contributing artists property>```
+- ```-artist  <MP3 album artist property>```
+- ```-album   <MP3 album property>```
+- ```-genre   <MP3 genre property>```
+- ```-year    <MP3 year property>```
+- ```-num     <MP3 # property>```
+- ```-out     <Output directory>```
+- ```-save    (save to cfg.txt)```
+
+## Usage
+When you first use SoundLoad, you must provide a client ID, which will be saved to cfg.txt if you use the ```-save``` argument.
+
+### Getting a new client ID
+- Open browser dev tools (ctrl+shift+i, usually)
+- Go to the network tab
+- Go to [SoundCloud](https://soundcloud.com)
+- Filter URL's with "client_id="
+- Find a request with a client ID in it

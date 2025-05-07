@@ -25,6 +25,8 @@ void Cfg::ReadCfg(std::ifstream cfg)
 		}
 		else if (field == "img")
 		{
+			if (cover.empty()) cover = value;
+
 			flags |= HasImg;
 		}
 	}
@@ -65,22 +67,30 @@ Cfg::Cfg(int argc, char* argv[])
 	bool save = false;
 	
 	const std::unordered_map<std::string, std::function<void(const char*)>> map = {
-		{ "--cid",     [this] (const char* v) { CID      = v; }},
-		{ "--fname",   [this] (const char* v) { fName    = v; }},
-		{ "--title",   [this] (const char* v) { title    = v; }},
-		{ "--album",   [this] (const char* v) { album    = v; }},
-		{ "--cartist", [this] (const char* v) { cArtists = v; }},
-		{ "--artist",  [this] (const char* v) { artist   = v; }},
-		{ "--out",     [this] (const char* v) { output   = v; }},
-		{ "--cover",   [this] (const char* v) { cover    = v; }},
-		{ "--save",    [&save](const char* v) { save     = 1; }}
+		{ "-cid",     [this] (const char* v) { CID     = v; }},
+		{ "-fname",   [this] (const char* v) { fName   = v; }},
+		{ "-title",   [this] (const char* v) { title   = v; }},
+		{ "-album",   [this] (const char* v) { album   = v; }},
+		{ "-artists", [this] (const char* v) { artists = v; }},
+		{ "-artist",  [this] (const char* v) { artist  = v; }},
+		{ "-genre",   [this] (const char* v) { genre   = v; }},
+		{ "-out",     [this] (const char* v) { output  = v; }},
+		{ "-cover",   [this] (const char* v) { cover   = v; }},
+		{ "-save",    [&save](const char* v) { save    = 1; }},
+		{ "-year",    [this] (const char* v) { year    = std::stoi(v); }},
+		{ "-num",     [this] (const char* v) { num     = std::stoi(v); }}
 	};
+
+	if (argc > 1 && argv[1][0] == '-')
+	{
+		status |= NoLink;
+	}
 
 	for (int i = 2; i < argc; i += 2)
 	{
 		std::string key = argv[i];
 
-		for (char& ch : key)
+		for (char& ch : key) // converting to lowercase for hash map
 		{
 			ch = std::tolower(ch);
 		}
@@ -91,15 +101,15 @@ Cfg::Cfg(int argc, char* argv[])
 		{
 			std::cerr << "INVALID ARGUMENT: " << key << '\n';
 
-			error = true;
+			status |= Error;
 			return;
 		}
 
-		if (it->first != "--save" && i + 1 >= argc)
+		if (it->first != "-save" && i + 1 >= argc)
 		{
-			ERR_MSG("No value provided for final arg");
+			std::cerr << "NO VALUE PROVIDED FOR ARGUMENT: " << argv[i] << '\n';
 
-			error = true;
+			status |= Error;
 			return;
 		}
 
@@ -118,9 +128,13 @@ Cfg::Cfg(int argc, char* argv[])
 		DBG_MSG("Created cfg.txt");
 	}
 
-	ReadCfg(std::ifstream(name));
-	if (save) SaveCfg(std::ofstream(name));
+	if (!(flags & NoLink))
+	{
+		ReadCfg(std::ifstream(name));
 
-	if (title.empty()) title = fName;
-	if (!output.empty() && output.back() != '\\') output.push_back('\\');
+		if (title.empty()) title = fName;
+		if (!output.empty() && output.back() != '\\') output.push_back('\\');
+	}
+
+	if (save) SaveCfg(std::ofstream(name));
 }
