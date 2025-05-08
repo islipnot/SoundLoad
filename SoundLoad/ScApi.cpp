@@ -14,7 +14,7 @@ std::string GetRawJson(std::string track, const std::string& CID)
 	const std::string url = "https://api-v2.soundcloud.com/resolve?url=" + track + "&client_id=" + CID;
 	cpr::Response response = cpr::Get(cpr::Url{ url });
 	
-	std::cout << "Resolving track from: " << url << '\n';
+	std::cout << "> RESOLUTION URL: " << url << '\n';
 
 	if (response.status_code != 200)
 	{
@@ -38,27 +38,18 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	tag->setTitle(value.c_str()); // if a title wasn't provided it'll use the file name (config.cpp/Cfg::Cfg)
 
-	std::cout << "- title: " << value << '\n';
-
-	if (!cfg.album.empty())
-	{
-		value = cfg.album;
-	}
+	if (!cfg.album.empty()) value = cfg.album;
 
 	tag->setAlbum(value.c_str());
-
-	std::cout << "- album: " << value << '\n';
 
 	value = cfg.artists.empty() ? std::string(data["user"]["username"]) : cfg.artists;
 
 	tag->setArtist(value.c_str());
 
-	std::cout << "- artists: " << value << '\n';
-
 	value = " (github.com/islipnot/SoundLoad)";
 	if (data.contains("description")) value.insert(0, data["description"]);
 
-	tag->setComment(value);
+	tag->setComment(value.c_str());
 
 	// Getting track cover
 
