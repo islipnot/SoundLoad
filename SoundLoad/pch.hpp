@@ -1,6 +1,6 @@
 #pragma once
 
-// INCLUDES
+#define WIN32_LEAN_AND_MEAN
 
 #include <iostream>
 #include <fstream>
@@ -8,6 +8,8 @@
 #include <filesystem>
 #include <unordered_map>
 #include <regex>
+
+#include <Windows.h>
 
 #include "textidentificationframe.h"
 #include "attachedpictureframe.h"
@@ -20,8 +22,6 @@
 #include "cpr.h"
 
 #include "json.hpp"
-
-// DEBUGGING MACROS
 
 #ifdef _DEBUG
 	#define DBG_MSG(msg) std::cout << msg << '\n'

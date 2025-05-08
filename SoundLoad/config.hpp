@@ -30,11 +30,28 @@
 
 class Cfg
 {
+	enum Args
+	{
+		arg_cid,
+		arg_fname,
+		arg_title,
+		arg_album,
+		arg_artists,
+		arg_artist,
+		arg_genre,
+		arg_out,
+		arg_cover,
+		arg_save,
+		arg_year,
+		arg_num
+	};
+
 	enum CfgFlags
 	{
 		HasCID = 0x01,
 		HasOut = 0x02,
-		HasImg = 0x04
+		HasImg = 0x04,
+		WasRan = 0x08  // SoundLoad.exe has been run
 	};
 
 	int flags = 0;

@@ -5,29 +5,47 @@ void Cfg::ReadCfg(std::ifstream cfg)
 {
 	std::string value;
 
+	const std::unordered_map<std::string, int> map = {
+		{ "cid", HasCID },
+		{ "out", HasOut },
+		{ "img", HasImg },
+		{ "ran", WasRan}
+	};
+
 	while (std::getline(cfg, value))
 	{
-		const size_t seperator  = value.find_first_of(' ');
-		const std::string field = value.substr(0, seperator);
+		const size_t seperator = value.find_first_of(' ');
+		const std::string key = value.substr(0, seperator);
 		value.erase(0, seperator + 1);
 
-		if (field == "cid")
+		const auto it = map.find(key);
+
+		if (it == map.end()) continue;
+
+		switch (it->second)
 		{
+		case HasCID:
+
 			if (CID.empty()) CID = value;
-
 			flags |= HasCID;
-		}
-		else if (field == "out")
-		{
+			break;
+
+		case HasOut:
+
 			if (output.empty()) output = value;
-
 			flags |= HasOut;
-		}
-		else if (field == "img")
-		{
-			if (cover.empty()) cover = value;
+			break;
 
+		case HasImg:
+
+			if (cover.empty()) cover = value;
 			flags |= HasImg;
+			break;
+
+		case WasRan:
+
+			flags |= WasRan;
+			break;
 		}
 	}
 
@@ -65,20 +83,20 @@ Cfg::Cfg(int argc, char* argv[])
 	// Reading arguments
 
 	bool save = false;
-	
-	const std::unordered_map<std::string, std::function<void(const char*)>> map = {
-		{ "-cid",     [this] (const char* v) { CID     = v; }},
-		{ "-fname",   [this] (const char* v) { fName   = v; }},
-		{ "-title",   [this] (const char* v) { title   = v; }},
-		{ "-album",   [this] (const char* v) { album   = v; }},
-		{ "-artists", [this] (const char* v) { artists = v; }},
-		{ "-artist",  [this] (const char* v) { artist  = v; }},
-		{ "-genre",   [this] (const char* v) { genre   = v; }},
-		{ "-out",     [this] (const char* v) { output  = v; }},
-		{ "-cover",   [this] (const char* v) { cover   = v; }},
-		{ "-save",    [&save](const char* v) { save    = 1; }},
-		{ "-year",    [this] (const char* v) { year    = std::stoi(v); }},
-		{ "-num",     [this] (const char* v) { num     = std::stoi(v); }}
+
+	const std::unordered_map<std::string, int> map = {
+		{ "-cid",     arg_cid     },
+		{ "-fname",   arg_fname   },
+		{ "-title",   arg_title   },
+		{ "-album",   arg_album   },
+		{ "-artists", arg_artists },
+		{ "-artist",  arg_artist  },
+		{ "-genre",   arg_genre   },
+		{ "-out",     arg_out     },
+		{ "-cover",   arg_cover   },
+		{ "-save",    arg_save    },
+		{ "-year",    arg_year    },
+		{ "-num",     arg_num     }
 	};
 
 	for (int i = 1; i < argc; i += 2)
@@ -93,7 +111,7 @@ Cfg::Cfg(int argc, char* argv[])
 
 		for (char& ch : key) // converting to lowercase for hash map
 		{
-			ch = std::tolower(ch);
+			if (std::isalpha(ch)) ch = std::tolower(ch);
 		}
 
 		const auto it = map.find(key);
@@ -114,7 +132,23 @@ Cfg::Cfg(int argc, char* argv[])
 			return;
 		}
 
-		it->second(argv[i + 1]);
+		const char* v = argv[i + 1];
+
+		switch (it->second)
+		{
+		case arg_cid:     { CID     = v; break; }
+		case arg_fname:   { fName   = v; break; }
+		case arg_title:   { title   = v; break; }
+		case arg_album:   { album   = v; break; }
+		case arg_artists: { artists = v; break; }
+		case arg_artist:  { artist  = v; break; }
+		case arg_genre:   { genre   = v; break; }
+		case arg_out:     { output  = v; break; }
+		case arg_cover:   { cover   = v; break; }
+		case arg_save:    { save    = 1; break; }
+		case arg_year:    { year = std::stoi(v); break; }
+		case arg_num:     { num  = std::stoi(v); break; }
+		}
 	}
 
 	// Handling config
@@ -138,4 +172,11 @@ Cfg::Cfg(int argc, char* argv[])
 	}
 
 	if (save) SaveCfg(std::ofstream(name));
+
+	// Adding SoundLoad to environment variables if requested
+
+	/*if (!(flags & WasRan) && MessageBox(nullptr, L"Add SoundLoad to environment variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES)
+	{
+		
+	}*/
 }
