@@ -2,7 +2,7 @@
 The goal of this project is to help all SoundCloud users save their favorite songs with as much data as possible preserved. Spotify users also benefit from this, as they can effortlessly import a song to local files in seconds, where it would otherwise take several minutes if the song was downloaded and the metadata was all set manually.
 
 ## Arguments
-FIRST ARGUMENT MUST BE TRACK LINK
+If you wish to download a SoundCloud track or track cover, you must provide a link to it as the first argument.
 - ```-CID     <client ID>```
 - ```-fName   <MP3 file name&>```
 - ```-title   <MP3 title property>```

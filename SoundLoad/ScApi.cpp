@@ -38,7 +38,7 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	tag->setTitle(value.c_str()); // if a title wasn't provided it'll use the file name (config.cpp/Cfg::Cfg)
 
-	std::cout << "Title: " << value << '\n';
+	std::cout << "- title: " << value << '\n';
 
 	if (!cfg.album.empty())
 	{
@@ -47,18 +47,18 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	tag->setAlbum(value.c_str());
 
-	std::cout << "Album: " << value << '\n';
+	std::cout << "- album: " << value << '\n';
 
 	value = cfg.artists.empty() ? std::string(data["user"]["username"]) : cfg.artists;
 
 	tag->setArtist(value.c_str());
 
-	std::cout << "Artists: " << value << '\n';
+	std::cout << "- artists: " << value << '\n';
 
-	if (data.contains("description"))
-	{
-		tag->setComment(std::string(data["description"]));
-	}
+	value = " (github.com/islipnot/SoundLoad)";
+	if (data.contains("description")) value.insert(0, data["description"]);
+
+	tag->setComment(value);
 
 	// Getting track cover
 
@@ -84,9 +84,6 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 bool DownloadTrack(const json& data, Cfg& cfg)
 {
 	// Getting the streaming url
-
-	const int TrackID = data["id"];
-	const std::string TrackAuth = data["track_authorization"];
 
 	std::string url;
 

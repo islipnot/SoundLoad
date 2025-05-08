@@ -36,21 +36,21 @@ void Cfg::ReadCfg(std::ifstream cfg)
 
 void Cfg::SaveCfg(std::ofstream cfg)
 {
-	if (!(flags & HasCID))
+	if (!(flags & HasCID) && !CID.empty())
 	{
 		cfg << "cid " << CID << '\n';
 
 		DBG_MSG("Saved CID to cfg.txt");
 	}
 
-	if (!(flags & HasOut))
+	if (!(flags & HasOut) && !output.empty())
 	{
 		cfg << "out " << output << '\n';
 
 		DBG_MSG("Saved output dir to cfg.txt");
 	}
 
-	if (!(flags & HasImg))
+	if (!(flags & HasImg) && !cover.empty())
 	{
 		cfg << "img " << cover << '\n';
 
@@ -81,13 +81,14 @@ Cfg::Cfg(int argc, char* argv[])
 		{ "-num",     [this] (const char* v) { num     = std::stoi(v); }}
 	};
 
-	if (argc > 1 && argv[1][0] == '-')
+	for (int i = 1; i < argc; i += 2)
 	{
-		status |= NoLink;
-	}
+		if (i == 1)
+		{
+			if (argv[1][0] != '-') ++i;
+			else status |= NoLink;
+		}
 
-	for (int i = 2; i < argc; i += 2)
-	{
 		std::string key = argv[i];
 
 		for (char& ch : key) // converting to lowercase for hash map
