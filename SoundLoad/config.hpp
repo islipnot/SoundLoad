@@ -30,31 +30,25 @@
 
 class Cfg
 {
-	enum Args
+	enum PrivFlags
 	{
-		arg_cid,
-		arg_fname,
-		arg_title,
-		arg_album,
-		arg_artists,
-		arg_artist,
-		arg_genre,
-		arg_out,
-		arg_cover,
-		arg_save,
-		arg_year,
-		arg_num
+		HasCID    = 0x01,
+		HasOut    = 0x02,
+		HasImg    = 0x04,
+		WasRan    = 0x08,
+		a_cid     = 0x10,
+		a_fname   = 0x20,
+		a_title   = 0x40,
+		a_album   = 0x80,
+		a_artists = 0x100,
+		a_artist  = 0x200,
+		a_genre   = 0x400,
+		a_out     = 0x800,
+		a_cover   = 0x1000,
+		a_save    = 0x2000,
+		a_year    = 0x4000,
+		a_num     = 0x8000
 	};
-
-	enum CfgFlags
-	{
-		HasCID = 0x01,
-		HasOut = 0x02,
-		HasImg = 0x04,
-		WasRan = 0x08  // SoundLoad.exe has been run
-	};
-
-	int flags = 0;
 
 	void ReadCfg(std::ifstream cfg);
 	void SaveCfg(std::ofstream cfg);
@@ -63,9 +57,9 @@ public:
 
 	enum StatusFlags
 	{
-		Error  = 0x01,
-		NoLink = 0x02, // No link provided, this should only be the case for saving your config 
-		NoSong = 0x04  // Only the cover is to be downloaded, not the song
+		Error  = -0x01,
+		NoLink = -0x02, // No link provided, this should only be the case for saving your config 
+		NoSong = -0x04  // Only the cover is to be downloaded, not the song
 	};
 
 	Cfg(int argc, char* argv[]);
@@ -89,7 +83,7 @@ public:
 	std::string fName;  // File name
 	std::string CID;    // SoundCloud client ID
 	std::string output; // MP3 output directory
-	std::string cover;  // Path for MP3 cover
+	std::string cover;  // Path for MP3 cover (to get from or store)
 
-	int status = 0;
+	int flags = 0;
 };

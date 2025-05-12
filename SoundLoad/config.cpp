@@ -85,18 +85,18 @@ Cfg::Cfg(int argc, char* argv[])
 	bool save = false;
 
 	const std::unordered_map<std::string, int> map = {
-		{ "-cid",     arg_cid     },
-		{ "-fname",   arg_fname   },
-		{ "-title",   arg_title   },
-		{ "-album",   arg_album   },
-		{ "-artists", arg_artists },
-		{ "-artist",  arg_artist  },
-		{ "-genre",   arg_genre   },
-		{ "-out",     arg_out     },
-		{ "-cover",   arg_cover   },
-		{ "-save",    arg_save    },
-		{ "-year",    arg_year    },
-		{ "-num",     arg_num     }
+		{ "-cid",     a_cid     },
+		{ "-fname",   a_fname   },
+		{ "-title",   a_title   },
+		{ "-album",   a_album   },
+		{ "-artists", a_artists },
+		{ "-artist",  a_artist  },
+		{ "-genre",   a_genre   },
+		{ "-out",     a_out     },
+		{ "-cover",   a_cover   },
+		{ "-save",    a_save    },
+		{ "-year",    a_year    },
+		{ "-num",     a_num     }
 	};
 
 	for (int i = 1; i < argc; i += 2)
@@ -104,7 +104,7 @@ Cfg::Cfg(int argc, char* argv[])
 		if (i == 1)
 		{
 			if (argv[1][0] != '-') ++i;
-			else status |= NoLink;
+			else flags |= NoLink;
 		}
 
 		std::string key = argv[i];
@@ -120,7 +120,7 @@ Cfg::Cfg(int argc, char* argv[])
 		{
 			std::cerr << "INVALID ARGUMENT: " << key << '\n';
 
-			status |= Error;
+			flags |= Error;
 			return;
 		}
 
@@ -128,7 +128,7 @@ Cfg::Cfg(int argc, char* argv[])
 		{
 			std::cerr << "NO VALUE PROVIDED FOR ARGUMENT: " << argv[i] << '\n';
 
-			status |= Error;
+			flags |= Error;
 			return;
 		}
 
@@ -136,18 +136,18 @@ Cfg::Cfg(int argc, char* argv[])
 
 		switch (it->second)
 		{
-		case arg_cid:     { CID     = v; break; }
-		case arg_fname:   { fName   = v; break; }
-		case arg_title:   { title   = v; break; }
-		case arg_album:   { album   = v; break; }
-		case arg_artists: { artists = v; break; }
-		case arg_artist:  { artist  = v; break; }
-		case arg_genre:   { genre   = v; break; }
-		case arg_out:     { output  = v; break; }
-		case arg_cover:   { cover   = v; break; }
-		case arg_save:    { save    = 1; break; }
-		case arg_year:    { year = std::stoi(v); break; }
-		case arg_num:     { num  = std::stoi(v); break; }
+		case a_cid:     { CID     = v; break; }
+		case a_fname:   { fName   = v; break; }
+		case a_title:   { title   = v; break; }
+		case a_album:   { album   = v; break; }
+		case a_artists: { artists = v; break; }
+		case a_artist:  { artist  = v; break; }
+		case a_genre:   { genre   = v; break; }
+		case a_out:     { output  = v; break; }
+		case a_cover:   { cover   = v; break; }
+		case a_save:    { save    = 1; break; }
+		case a_year:    { year = std::stoi(v); break; }
+		case a_num:     { num  = std::stoi(v); break; }
 		}
 	}
 
@@ -177,6 +177,7 @@ Cfg::Cfg(int argc, char* argv[])
 
 	/*if (!(flags & WasRan) && MessageBox(nullptr, L"Add SoundLoad to environment variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES)
 	{
-		
+		HANDLE handle = GetCurrentProcess();
+		OpenProcessToken(handle, TOKEN_IMPERSONATE | TOKEN_QUERY | TOKEN_DUPLICATE, &handle);
 	}*/
 }

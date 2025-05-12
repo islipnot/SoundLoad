@@ -12,22 +12,28 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	DBG_MSG("[*] HANDLING ARGUMENTS...\n");
+	std::cout << "[*] HANDLING ARGUMENTS...\n\n";
 	
 	Cfg cfg(argc, argv);
 
-	if (cfg.status & Cfg::Error) return -1;
-	if (cfg.status & Cfg::NoLink) return 0;
+	if (cfg.flags & Cfg::Error) return -1;
+	if (cfg.flags & Cfg::NoLink) return 0;
 
-	DBG_MSG("\n[*] SCRAPING TRACK DATA...\n");
+	std::cout << "[*] SCRAPING TRACK DATA...\n";
 
 	const json data = json::parse(GetRawJson(argv[1], cfg.CID));
+
+	if (!data.contains("kind") || data["kind"] != "track")
+	{
+		std::cerr << "ERROR: INVALID TRACK LINK\n";
+		return -1;
+	}
 
 	if (!DownloadTrack(data, cfg)) return -1;
 	
 	if (data.empty()) return -1;
 	
-	std::cout << "\n[!] SUCCESSFULLY DOWNLOADED TRACK!\n";
+	std::cout << "[!] SUCCESSFULLY DOWNLOADED TRACK!\n";
 
 	return 0;
 }

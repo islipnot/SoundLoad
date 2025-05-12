@@ -38,18 +38,43 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	tag->setTitle(value.c_str()); // if a title wasn't provided it'll use the file name (config.cpp/Cfg::Cfg)
 
-	if (!cfg.album.empty()) value = cfg.album;
+	if (!cfg.album.empty())
+	{
+		value = cfg.album;
+	}
 
-	tag->setAlbum(value.c_str());
+	tag->setAlbum(value.c_str()); // album defaults to track title for spotify, if you import it there
 
 	value = cfg.artists.empty() ? std::string(data["user"]["username"]) : cfg.artists;
 
 	tag->setArtist(value.c_str());
 
-	value = " (github.com/islipnot/SoundLoad)";
-	if (data.contains("description")) value.insert(0, data["description"]);
+	value = "(github.com/islipnot/SoundLoad)";
+
+	if (data.contains("description"))
+	{
+		value.insert(0, ' ' + std::string(data["description"]));
+	}
 
 	tag->setComment(value.c_str());
+
+	if (data.contains("genre") || !cfg.genre.empty())
+	{
+		if (cfg.genre.empty()) value = std::string(data["genre"]);
+		else value = cfg.genre;
+
+		tag->setGenre(value.c_str());
+	}
+
+	if (cfg.num != -1)
+	{
+		tag->setTrack(cfg.num);
+	}
+
+	if (cfg.year != -1)
+	{
+		tag->setYear(cfg.year);
+	}
 
 	// Getting track cover
 
