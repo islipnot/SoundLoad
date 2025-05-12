@@ -1,6 +1,43 @@
 #include "pch.hpp"
 #include "config.hpp"
 
+bool Cfg::RegPath()
+{
+	HKEY key;
+
+	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Environment", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &key) != ERROR_SUCCESS)
+	{
+		return false;
+	}
+
+	constexpr PCWSTR ValName = L"Path";
+	DWORD ValSz = 0;
+
+	if (RegQueryValueEx(key, ValName, nullptr, nullptr, nullptr, &ValSz) == ERROR_SUCCESS)
+	{
+		std::wstring value(ValSz / sizeof(WCHAR), 0);
+		DWORD NewSz = value.size() * sizeof(WCHAR);
+
+		if (RegQueryValueEx(key, ValName, nullptr, nullptr, reinterpret_cast<BYTE*>(value.data()), &NewSz) == ERROR_SUCCESS)
+		{
+			value.pop_back(); // removing null terminator
+
+			if (value.back() != L';') value.push_back(L';');
+
+			value += std::filesystem::current_path().wstring() + L';';
+
+			if (RegSetValueEx(key, ValName, 0, REG_EXPAND_SZ, reinterpret_cast<BYTE*>(value.data()), value.size() * sizeof(WCHAR)) == ERROR_SUCCESS)
+			{
+				RegCloseKey(key);
+				return true;
+			}
+		}
+	}
+
+	RegCloseKey(key);
+	return false;
+}
+
 void Cfg::ReadCfg(std::ifstream cfg)
 {
 	std::string value;
@@ -104,7 +141,7 @@ Cfg::Cfg(int argc, char* argv[])
 		if (i == 1)
 		{
 			if (argv[1][0] != '-') ++i;
-			else flags |= NoLink;
+			else status |= NoLink;
 		}
 
 		std::string key = argv[i];
@@ -120,7 +157,7 @@ Cfg::Cfg(int argc, char* argv[])
 		{
 			std::cerr << "INVALID ARGUMENT: " << key << '\n';
 
-			flags |= Error;
+			status |= Error;
 			return;
 		}
 
@@ -128,7 +165,7 @@ Cfg::Cfg(int argc, char* argv[])
 		{
 			std::cerr << "NO VALUE PROVIDED FOR ARGUMENT: " << argv[i] << '\n';
 
-			flags |= Error;
+			status |= Error;
 			return;
 		}
 
@@ -163,7 +200,7 @@ Cfg::Cfg(int argc, char* argv[])
 		DBG_MSG("Created cfg.txt");
 	}
 
-	if (!(flags & NoLink))
+	if (!(status & NoLink))
 	{
 		ReadCfg(std::ifstream(name));
 
@@ -171,13 +208,27 @@ Cfg::Cfg(int argc, char* argv[])
 		if (!output.empty() && output.back() != '\\') output.push_back('\\');
 	}
 
+	if (CID.empty())
+	{
+		std::cerr << "ERROR: CLIENT ID NOT PROVIDED\n";
+		status |= Error;
+		return;
+	}
+
 	if (save) SaveCfg(std::ofstream(name));
 
 	// Adding SoundLoad to environment variables if requested
 
-	/*if (!(flags & WasRan) && MessageBox(nullptr, L"Add SoundLoad to environment variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES)
+	if (!(flags & WasRan) && MessageBox(nullptr, L"Add SoundLoad to environment variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES)
 	{
-		HANDLE handle = GetCurrentProcess();
-		OpenProcessToken(handle, TOKEN_IMPERSONATE | TOKEN_QUERY | TOKEN_DUPLICATE, &handle);
-	}*/
+		if (RegPath())
+		{
+			std::cout << "Added SoundLoad to environment variables!\n";
+
+			std::ofstream cfg(name);
+			cfg << "ran\n";
+			cfg.close();
+		}
+		else std::cout << "ERROR: FAILED TO ADD SOUNDLOAD TO ENVIRONMENT VARIABLES (ignoring)\n";
+	}
 }

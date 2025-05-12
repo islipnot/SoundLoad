@@ -50,16 +50,19 @@ class Cfg
 		a_num     = 0x8000
 	};
 
+	bool RegPath();
 	void ReadCfg(std::ifstream cfg);
 	void SaveCfg(std::ofstream cfg);
+
+	int flags = 0;
 
 public:
 
 	enum StatusFlags
 	{
-		Error  = -0x01,
-		NoLink = -0x02, // No link provided, this should only be the case for saving your config 
-		NoSong = -0x04  // Only the cover is to be downloaded, not the song
+		Error  = 0x01,
+		NoLink = 0x02, // No link provided, this should only be the case for saving your config 
+		NoSong = 0x04  // Only the cover is to be downloaded, not the song
 	};
 
 	Cfg(int argc, char* argv[]);
@@ -85,5 +88,5 @@ public:
 	std::string output; // MP3 output directory
 	std::string cover;  // Path for MP3 cover (to get from or store)
 
-	int flags = 0;
+	int status = 0;
 };

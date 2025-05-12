@@ -16,8 +16,8 @@ int main(int argc, char* argv[])
 	
 	Cfg cfg(argc, argv);
 
-	if (cfg.flags & Cfg::Error) return -1;
-	if (cfg.flags & Cfg::NoLink) return 0;
+	if (cfg.status & Cfg::Error) return -1;
+	if (cfg.status & Cfg::NoLink) return 0;
 
 	std::cout << "[*] SCRAPING TRACK DATA...\n";
 

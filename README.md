@@ -28,4 +28,4 @@ You must provide a client ID every use unless you save one to cfg.txt. This can 
 - Put the link to the track as first argument, all link formats work
 - Done! It's that simple!
 
-If you want to have more control over the MP3 metadata/name/path, you can use any combination of arguments listed above. If ```-save``` is used, all that will be saved (if provided) is the CID and output directory.
+If you want to have more control over the MP3 metadata/name/path, you can use any combination of arguments listed above. If ```-save``` is used, all that will be saved (if provided) is the CID and output directory. </br> Additionally, when first ran, or when the "ran" field of cfg.txt is not detected, you will have the option to add the program to your user environment variables. This allows you to run the program no matter what the command prompt's directory is.
