@@ -28,6 +28,16 @@
 * Above fields (besides client ID) are scraped from track page or left empty if not provided by the user
 */
 
+struct JsonCfg
+{
+	std::string cid;
+	std::string out;
+	std::string img;
+	bool ran = true;
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(JsonCfg, cid, out, img, ran)
+
 class Cfg
 {
 	enum PrivFlags
@@ -52,7 +62,7 @@ class Cfg
 
 	bool RegPath();
 	void ReadCfg(std::ifstream cfg);
-	void SaveCfg(std::ofstream cfg);
+	void SaveCfg(const char* path);
 
 	int flags = 0;
 

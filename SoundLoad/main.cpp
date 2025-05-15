@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 	if (cfg.status & Cfg::Error) return -1;
 	if (cfg.status & Cfg::NoLink) return 0;
 
-	std::cout << "[*] SCRAPING TRACK DATA...\n";
+	std::cout << "\n[*] SCRAPING TRACK DATA...\n";
 
 	const json data = json::parse(GetRawJson(argv[1], cfg.CID));
 
@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 	
 	if (data.empty()) return -1;
 	
-	std::cout << "[!] SUCCESSFULLY DOWNLOADED TRACK!\n";
+	std::cout << "\n[!] SUCCESSFULLY DOWNLOADED TRACK!\n";
 
 	return 0;
 }

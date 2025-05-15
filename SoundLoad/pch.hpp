@@ -31,7 +31,6 @@
 
 /* TODO
 - fix filesystem errors when ppl include things like stars in track names
-- global environment var
 - sharex 
 - option to download just the cover of a song
 */

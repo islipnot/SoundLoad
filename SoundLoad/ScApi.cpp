@@ -53,7 +53,7 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	if (data.contains("description"))
 	{
-		value.insert(0, ' ' + std::string(data["description"]));
+		value.insert(0, std::string(data["description"]) + ' ');
 	}
 
 	tag->setComment(value.c_str());
@@ -138,10 +138,12 @@ bool DownloadTrack(const json& data, Cfg& cfg)
 	if (cfg.fName.empty()) path = data["title"];
 	else path = cfg.fName;
 
+	path = std::regex_replace(path, std::regex("[<>:\"/\\|?*]"), "_");
+
 	if (!cfg.output.empty()) path.insert(0, cfg.output);
 
 	path += ".mp3";
-
+	
 	std::ofstream track(path, std::ios::binary | std::ios::trunc);
 	track.write(response.text.data(), response.text.size());
 	track.close();

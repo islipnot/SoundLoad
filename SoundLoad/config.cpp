@@ -1,6 +1,8 @@
 #include "pch.hpp"
 #include "config.hpp"
 
+using json = nlohmann::json;
+
 bool Cfg::RegPath()
 {
 	HKEY key;
@@ -24,7 +26,15 @@ bool Cfg::RegPath()
 
 			if (value.back() != L';') value.push_back(L';');
 
-			value += std::filesystem::current_path().wstring() + L';';
+			const std::wstring NewPath = std::filesystem::current_path().wstring() + L"\\SoundLoad.exe;";
+
+			if (value.find(NewPath) != std::wstring::npos)
+			{
+				std::cout << "SoundLoad already exists in environment variables!\n";
+				RegCloseKey(key);
+				return true;
+			}
+			else value += NewPath;
 
 			if (RegSetValueEx(key, ValName, 0, REG_EXPAND_SZ, reinterpret_cast<BYTE*>(value.data()), value.size() * sizeof(WCHAR)) == ERROR_SUCCESS)
 			{
@@ -40,77 +50,67 @@ bool Cfg::RegPath()
 
 void Cfg::ReadCfg(std::ifstream cfg)
 {
-	std::string value;
+	json data;
 
-	const std::unordered_map<std::string, int> map = {
-		{ "cid", HasCID },
-		{ "out", HasOut },
-		{ "img", HasImg },
-		{ "ran", WasRan}
-	};
-
-	while (std::getline(cfg, value))
+	try 
+	{ 
+		cfg >> data; 
+	}
+	catch (const std::exception& e) 
 	{
-		const size_t seperator = value.find_first_of(' ');
-		const std::string key = value.substr(0, seperator);
-		value.erase(0, seperator + 1);
-
-		const auto it = map.find(key);
-
-		if (it == map.end()) continue;
-
-		switch (it->second)
-		{
-		case HasCID:
-
-			if (CID.empty()) CID = value;
-			flags |= HasCID;
-			break;
-
-		case HasOut:
-
-			if (output.empty()) output = value;
-			flags |= HasOut;
-			break;
-
-		case HasImg:
-
-			if (cover.empty()) cover = value;
-			flags |= HasImg;
-			break;
-
-		case WasRan:
-
-			flags |= WasRan;
-			break;
-		}
+		cfg.close();
+		return;
 	}
 
 	cfg.close();
+
+	const JsonCfg CfgData = data.get<JsonCfg>();
+
+	if (!CfgData.cid.empty() && CID.empty())
+	{
+		CID = CfgData.cid;
+		flags |= HasCID;
+	}
+
+	if (!CfgData.out.empty() && output.empty())
+	{
+		output = CfgData.out;
+		flags |= HasOut;
+	}
+	
+	if (!CfgData.img.empty() && cover.empty())
+	{
+		cover = CfgData.img;
+		flags |= HasImg;
+	}
+
+	if (CfgData.ran) flags |= WasRan;
 }
 
-void Cfg::SaveCfg(std::ofstream cfg)
+void Cfg::SaveCfg(const char* path)
 {
-	if (!(flags & HasCID) && !CID.empty())
+	json data;
+	JsonCfg CfgData;
+
+	std::ifstream InCfg(path);
+
+	try 
 	{
-		cfg << "cid " << CID << '\n';
-
-		DBG_MSG("Saved CID to cfg.txt");
+		InCfg >> data;
+		CfgData = data.get<JsonCfg>();
 	}
+	catch (const std::exception& e) {}
 
-	if (!(flags & HasOut) && !output.empty())
-	{
-		cfg << "out " << output << '\n';
+	InCfg.close();
 
-		DBG_MSG("Saved output dir to cfg.txt");
-	}
+	if (!CID.empty()    && CfgData.cid.empty()) CfgData.cid = CID;
+	if (!output.empty() && CfgData.out.empty()) CfgData.out = output;
+	if (!cover.empty()  && CfgData.img.empty()) CfgData.img = cover;
 
-	if (!(flags & HasImg) && !cover.empty())
-	{
-		cfg << "img " << cover << '\n';
+	std::ofstream cfg(path);
 
-		DBG_MSG("Saved cover dir to cfg.txt");
-	}
+	if (cfg.is_open()) cfg << json(CfgData).dump(4);
+	else std::cout << "ERROR: FAILED TO OPEN cfg.json FOR WRITING (ignoring)\n";
 
 	cfg.close();
 }
@@ -135,12 +135,17 @@ Cfg::Cfg(int argc, char* argv[])
 		{ "-year",    a_year    },
 		{ "-num",     a_num     }
 	};
-
+	
 	for (int i = 1; i < argc; i += 2)
 	{
 		if (i == 1)
 		{
-			if (argv[1][0] != '-') ++i;
+			if (argv[1][0] != '-')
+			{
+				++i;
+
+				if (i == argc) break;
+			}
 			else status |= NoLink;
 		}
 
@@ -189,17 +194,19 @@ Cfg::Cfg(int argc, char* argv[])
 	}
 
 	// Handling config
-
-	constexpr const char* name = "cfg.txt";
+	
+	constexpr const char* name = "cfg.json";
 
 	if (!std::filesystem::exists(name))
 	{
 		std::ofstream cfg(name);
 		cfg.close();
 
-		DBG_MSG("Created cfg.txt");
+		DBG_MSG("Created cfg.json");
 	}
 
+	if (save) SaveCfg(name);
+	
 	if (!(status & NoLink))
 	{
 		ReadCfg(std::ifstream(name));
@@ -215,8 +222,6 @@ Cfg::Cfg(int argc, char* argv[])
 		return;
 	}
 
-	if (save) SaveCfg(std::ofstream(name));
-
 	// Adding SoundLoad to environment variables if requested
 
 	if (!(flags & WasRan) && MessageBox(nullptr, L"Add SoundLoad to environment variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES)
@@ -224,7 +229,6 @@ Cfg::Cfg(int argc, char* argv[])
 		if (RegPath())
 		{
 			std::cout << "Added SoundLoad to environment variables!\n";
-
 			std::ofstream cfg(name);
 			cfg << "ran\n";
 			cfg.close();

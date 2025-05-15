@@ -2,7 +2,7 @@
 The goal of this project is to help all SoundCloud users save their favorite songs with as much data as possible preserved. Spotify users also benefit from this, as they can effortlessly import a song to local files in seconds, where it would otherwise take several minutes if the song was downloaded and the metadata was all set manually.
 
 # Usage
-You must provide a client ID every use unless you save one to cfg.txt. This can be done by using the ```-CID``` & ```-save``` arguments in conjunction.
+You must provide a client ID every use unless you save one to cfg.json. This can be done by using the ```-CID``` & ```-save``` arguments in conjunction.
 
 ### Getting a new client ID
 - Open browser dev tools (ctrl+shift+i, usually)
@@ -22,10 +22,15 @@ You must provide a client ID every use unless you save one to cfg.txt. This can 
 - ```-year    <MP3 year property>```
 - ```-num     <MP3 # property>```
 - ```-out     <Output directory>```
-- ```-save    (save to cfg.txt)```
+- ```-save    (save to cfg.json)```
 
-### Downloading a song
-- Put the link to the track as first argument, all link formats work
-- Done! It's that simple!
+### Downloading a track
+- Put the track link as the first argument, both formats work
+- Optionally, add any combination of the arguments listed above
+- After running, the MP3 will be in the provided output directory, or if none was provided, in the executable directory
 
-If you want to have more control over the MP3 metadata/name/path, you can use any combination of arguments listed above. If ```-save``` is used, all that will be saved (if provided) is the CID and output directory. </br> Additionally, when first ran, or when the "ran" field of cfg.txt is not detected, you will have the option to add the program to your user environment variables. This allows you to run the program no matter what the command prompt's directory is.
+## Extra info
+- If you want to have more control over the MP3 metadata/name/path, you can use any combination of arguments listed above. If ```-save``` is used, all that will be saved (if provided) is the CID and output directory.
+- When first ran, or when the "ran" field of cfg.txt is not detected, you will have the option to add the program to your user environment variables. This allows you to run the program no matter what the command prompt's directory is.
+- The following characters will be replaced with an underscore in file names: <, >, :, ", \, |, ?, *
+- Do not try and download a Go+ song, it will not work.
