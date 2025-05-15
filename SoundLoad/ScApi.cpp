@@ -36,18 +36,18 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	std::string value = cfg.title.empty() ? std::string(data["title"]) : cfg.title;
 
-	tag->setTitle(value.c_str()); // if a title wasn't provided it'll use the file name (config.cpp/Cfg::Cfg)
+	tag->setTitle(TagLib::String(value.c_str(), TagLib::String::UTF8)); // if a title wasn't provided it'll use the file name (config.cpp/Cfg::Cfg)
 
 	if (!cfg.album.empty())
 	{
 		value = cfg.album;
 	}
 
-	tag->setAlbum(value.c_str()); // album defaults to track title for spotify, if you import it there
+	tag->setAlbum(TagLib::String(value.c_str(), TagLib::String::UTF8)); // album defaults to track title for spotify, if you import it there
 
 	value = cfg.artists.empty() ? std::string(data["user"]["username"]) : cfg.artists;
 
-	tag->setArtist(value.c_str());
+	tag->setArtist(TagLib::String(value.c_str(), TagLib::String::UTF8));
 
 	value = "(github.com/islipnot/SoundLoad)";
 
@@ -56,7 +56,7 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 		value.insert(0, std::string(data["description"]) + ' ');
 	}
 
-	tag->setComment(value.c_str());
+	tag->setComment(TagLib::String(value.c_str(), TagLib::String::UTF8));
 
 	if (data.contains("genre") || !cfg.genre.empty())
 	{

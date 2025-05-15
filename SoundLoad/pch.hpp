@@ -16,6 +16,7 @@
 #include "id3v2framefactory.h"
 #include "id3v2tag.h"
 #include "mpegfile.h"
+#include "tstring.h"
 #include "fileref.h"
 #include "tag.h"
 
