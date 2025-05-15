@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <unordered_map>
 #include <regex>
+#include <algorithm>
 
 #include <Windows.h>
 
@@ -31,7 +32,6 @@
 #endif
 
 /* TODO
-- fix filesystem errors when ppl include things like stars in track names
 - sharex 
 - option to download just the cover of a song
 */

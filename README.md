@@ -23,6 +23,7 @@ You must provide a client ID every use unless you save one to cfg.json. This can
 - ```-num     <MP3 # property>```
 - ```-out     <Output directory>```
 - ```-save    (save to cfg.json)```
+- ```-EnvVar  (add SoundLoad to user environment variables)```
 
 ### Downloading a track
 - Put the track link as the first argument, both formats work
@@ -31,7 +32,7 @@ You must provide a client ID every use unless you save one to cfg.json. This can
 
 ## Extra info
 - If you want to have more control over the MP3 metadata/name/path, you can use any combination of arguments listed above. If ```-save``` is used, all that will be saved (if provided) is the CID and output directory.
-- When first ran, or when the "ran" field of cfg.json is not detected, you will have the option to add the program to your user environment variables. This allows you to run the program no matter what the command prompt's directory is.
+- When first ran, or when the "ran" field of cfg.json is not detected, you will have the option to add the program to your user environment variables. This allows you to run the program no matter what the command prompt's directory is. Using the ```-EnvVar``` argument forces the program to do this.
 - Non-ASCII characters are supported in every case except command line arguments. This is subject to change.
 - The following characters will be replaced with an underscore in file names: <, >, :, ", \, |, ?, *
 - As it stands, I have not added the ability to download Go+ songs, though when I do, you must have an account with Go+.

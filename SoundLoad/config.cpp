@@ -3,13 +3,18 @@
 
 using json = nlohmann::json;
 
-bool Cfg::RegPath()
+void Cfg::RegPath()
 {
+	if (!(flags & AddEnvVar) && MessageBox(nullptr, L"Add SoundLoad to environment variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) != IDYES)
+	{
+		return;
+	}
+
 	HKEY key;
 
 	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Environment", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &key) != ERROR_SUCCESS)
 	{
-		return false;
+		return;
 	}
 
 	constexpr PCWSTR ValName = L"Path";
@@ -26,36 +31,39 @@ bool Cfg::RegPath()
 
 			if (value.back() != L';') value.push_back(L';');
 
-			const std::wstring NewPath = std::filesystem::current_path().wstring() + L"\\SoundLoad.exe;";
+			std::wstring NewPath = std::filesystem::current_path().wstring() + L"\\soundload.exe;";
+
+			std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+			std::transform(NewPath.begin(), NewPath.end(), NewPath.begin(), ::tolower);
 
 			if (value.find(NewPath) != std::wstring::npos)
 			{
 				std::cout << "SoundLoad already exists in environment variables!\n";
+
 				RegCloseKey(key);
-				return true;
+				return;
 			}
 			else value += NewPath;
 
 			if (RegSetValueEx(key, ValName, 0, REG_EXPAND_SZ, reinterpret_cast<BYTE*>(value.data()), value.size() * sizeof(WCHAR)) == ERROR_SUCCESS)
 			{
+				std::cout << "Added SoundLoad to environment variables!\n";
+
 				RegCloseKey(key);
-				return true;
+				return;
 			}
 		}
 	}
 
+	std::cout << "ERROR: FAILED TO ADD SOUNDLOAD TO ENVIRONMENT VARIABLES (ignoring)\n";
 	RegCloseKey(key);
-	return false;
 }
 
 void Cfg::ReadCfg(std::ifstream cfg)
 {
 	json data;
 
-	try 
-	{ 
-		cfg >> data; 
-	}
+	try { cfg >> data; }
 	catch (const std::exception& e) 
 	{
 		cfg.close();
@@ -83,8 +91,6 @@ void Cfg::ReadCfg(std::ifstream cfg)
 		cover = CfgData.img;
 		flags |= HasImg;
 	}
-
-	if (CfgData.ran) flags |= WasRan;
 }
 
 void Cfg::SaveCfg(const char* path)
@@ -98,6 +104,12 @@ void Cfg::SaveCfg(const char* path)
 	{
 		InCfg >> data;
 		CfgData = data.get<JsonCfg>();
+
+		if (!CfgData.ran)
+		{
+			CfgData.ran = true;
+			flags |= WasRan;
+		}
 	}
 	catch (const std::exception& e) {}
 
@@ -115,30 +127,27 @@ void Cfg::SaveCfg(const char* path)
 	cfg.close();
 }
 
-Cfg::Cfg(int argc, char* argv[])
+void Cfg::ReadArgs(int argc, char* argv[])
 {
-	// Reading arguments
-
-	bool save = false;
-
 	const std::unordered_map<std::string, int> map = {
-		{ "-cid",     a_cid     },
-		{ "-fname",   a_fname   },
-		{ "-title",   a_title   },
-		{ "-album",   a_album   },
-		{ "-artists", a_artists },
-		{ "-artist",  a_artist  },
-		{ "-genre",   a_genre   },
-		{ "-out",     a_out     },
-		{ "-cover",   a_cover   },
-		{ "-save",    a_save    },
-		{ "-year",    a_year    },
-		{ "-num",     a_num     }
+		{ "-cid",     a_cid      },
+		{ "-fname",   a_fname    },
+		{ "-title",   a_title    },
+		{ "-album",   a_album    },
+		{ "-artists", a_artists  },
+		{ "-artist",  a_artist   },
+		{ "-genre",   a_genre    },
+		{ "-out",     a_out      },
+		{ "-cover",   a_cover    },
+		{ "-save",    a_save     },
+		{ "-year",    a_year     },
+		{ "-num",     a_num      },
+		{ "-envvar",  WasRan }
 	};
-	
+
 	for (int i = 1; i < argc; i += 2)
 	{
-		if (i == 1)
+		if (i == 1) // Checking if the first argument is a track link or not
 		{
 			if (argv[1][0] != '-')
 			{
@@ -150,26 +159,20 @@ Cfg::Cfg(int argc, char* argv[])
 		}
 
 		std::string key = argv[i];
-
-		for (char& ch : key) // converting to lowercase for hash map
-		{
-			if (std::isalpha(ch)) ch = std::tolower(ch);
-		}
+		std::transform(key.begin(), key.end(), key.begin(), ::tolower); // Converting to lowercase for hash map
 
 		const auto it = map.find(key);
 
 		if (it == map.end())
 		{
-			std::cerr << "INVALID ARGUMENT: " << key << '\n';
-
+			std::cerr << "ERROR: INVALID ARGUMENT - " << key << '\n';
 			status |= Error;
 			return;
 		}
 
-		if (it->first != "-save" && i + 1 >= argc)
+		if (it->first != "-save" && it->first != "-envvar" && i + 1 >= argc) // I chose not to ignore this error because it might have undesired effects
 		{
-			std::cerr << "NO VALUE PROVIDED FOR ARGUMENT: " << argv[i] << '\n';
-
+			std::cerr << "ERROR: NO VALUE PROVIDED FOR ARGUMENT - " << argv[i] << '\n';
 			status |= Error;
 			return;
 		}
@@ -187,11 +190,19 @@ Cfg::Cfg(int argc, char* argv[])
 		case a_genre:   { genre   = v; break; }
 		case a_out:     { output  = v; break; }
 		case a_cover:   { cover   = v; break; }
-		case a_save:    { save    = 1; break; }
-		case a_year:    { year = std::stoi(v); break; }
-		case a_num:     { num  = std::stoi(v); break; }
+		case a_save:    { status |= Save;         break; }
+		case a_envvar:  { flags  |= AddEnvVar;    break; }
+		case a_year:    { year    = std::stoi(v); break; }
+		case a_num:     { num     = std::stoi(v); break; }
 		}
 	}
+}
+
+Cfg::Cfg(int argc, char* argv[])
+{
+	ReadArgs(argc, argv);
+
+	if (status & Error) return;
 
 	// Handling config
 	
@@ -205,34 +216,24 @@ Cfg::Cfg(int argc, char* argv[])
 		DBG_MSG("Created cfg.json");
 	}
 
-	if (save) SaveCfg(name);
+	if (status & Save) SaveCfg(name);
 	
 	if (!(status & NoLink))
 	{
 		ReadCfg(std::ifstream(name));
 
+		if (CID.empty())
+		{
+			std::cerr << "ERROR: CLIENT ID NOT PROVIDED\n";
+			status |= Error;
+			return;
+		}
+
 		if (title.empty()) title = fName;
 		if (!output.empty() && output.back() != '\\') output.push_back('\\');
 	}
 
-	if (CID.empty())
-	{
-		std::cerr << "ERROR: CLIENT ID NOT PROVIDED\n";
-		status |= Error;
-		return;
-	}
-
 	// Adding SoundLoad to environment variables if requested
 
-	if (!(flags & WasRan) && MessageBox(nullptr, L"Add SoundLoad to environment variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES)
-	{
-		if (RegPath())
-		{
-			std::cout << "Added SoundLoad to environment variables!\n";
-			std::ofstream cfg(name);
-			cfg << "ran\n";
-			cfg.close();
-		}
-		else std::cout << "ERROR: FAILED TO ADD SOUNDLOAD TO ENVIRONMENT VARIABLES (ignoring)\n";
-	}
+	if (!(flags & WasRan) || flags & AddEnvVar) RegPath();
 }

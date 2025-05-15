@@ -1,39 +1,11 @@
 #pragma once
 
-/* VALID CFG FIELDS
-*
-* - cid <client ID>
-* - out <MP3 output dir>
-* - img <default cover dir>
-*
-*/
-
-/* ARGUMENTS
-*
-* ADDED:
-*
-* -CID     <client_id>
-* -fName   <mp3 file name>
-* -title   <mp3 title property>
-* -artists <contributing artists property> (SURROUND IN QUOTES IF MULTIPLE ARTISTS)
-* -artist  <album artist property>
-* -album   <album property>
-* -genre   <genre property>
-* -year    <year property>
-* -num     <# property>
-* -out     <final mp3 output dir> (defaults to command directory at runtime)
-* -cover   <cover path>
-* -save    (saves args to cfg)
-*
-* Above fields (besides client ID) are scraped from track page or left empty if not provided by the user
-*/
-
 struct JsonCfg
 {
-	std::string cid;
-	std::string out;
-	std::string img;
-	bool ran = true;
+	std::string cid; // SoundCloud client ID
+	std::string out; // MP3 output directory
+	std::string img; // Path for MP3 cover (to get from or store)
+	bool ran = true; // Whether the program has been ran or not
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(JsonCfg, cid, out, img, ran)
@@ -42,27 +14,30 @@ class Cfg
 {
 	enum PrivFlags
 	{
-		HasCID    = 0x01,
-		HasOut    = 0x02,
-		HasImg    = 0x04,
-		WasRan    = 0x08,
-		a_cid     = 0x10,
-		a_fname   = 0x20,
-		a_title   = 0x40,
-		a_album   = 0x80,
-		a_artists = 0x100,
-		a_artist  = 0x200,
-		a_genre   = 0x400,
-		a_out     = 0x800,
-		a_cover   = 0x1000,
-		a_save    = 0x2000,
-		a_year    = 0x4000,
-		a_num     = 0x8000
+		HasCID     = 0x01,
+		HasOut     = 0x02,
+		HasImg     = 0x04,
+		WasRan     = 0x08,
+		a_cid      = 0x10,
+		a_fname    = 0x20,
+		a_title    = 0x40,
+		a_album    = 0x80,
+		a_artists  = 0x100,
+		a_artist   = 0x200,
+		a_genre    = 0x400,
+		a_out      = 0x800,
+		a_cover    = 0x1000,
+		a_save     = 0x2000,
+		a_year     = 0x4000,
+		a_num      = 0x8000,
+		a_envvar   = 0x10000,
+		AddEnvVar  = 0x10000
 	};
 
-	bool RegPath();
+	void RegPath();
 	void ReadCfg(std::ifstream cfg);
 	void SaveCfg(const char* path);
+	void ReadArgs(int argc, char* argv[]);
 
 	int flags = 0;
 
@@ -72,7 +47,8 @@ public:
 	{
 		Error  = 0x01,
 		NoLink = 0x02, // No link provided, this should only be the case for saving your config 
-		NoSong = 0x04  // Only the cover is to be downloaded, not the song
+		NoSong = 0x04, // Only the cover is to be downloaded, not the song
+		Save   = 0x08
 	};
 
 	Cfg(int argc, char* argv[]);
