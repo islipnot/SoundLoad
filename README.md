@@ -25,8 +25,8 @@ You must provide a client ID every use unless you save one to cfg.json. This can
 - ```-save    (save to cfg.json)```
 - ```-EnvVar  (add SoundLoad to user environment variables)```
 
-### Downloading a track
-- Put the track link as the first argument, both formats work
+### Downloading a track/album
+- Put the SoundCloud link as the first argument
 - Optionally, add any combination of the arguments listed above
 - After running, the MP3 will be in the provided output directory, or if none was provided, in the executable directory
 

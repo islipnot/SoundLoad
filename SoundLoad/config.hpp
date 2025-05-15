@@ -34,7 +34,7 @@ class Cfg
 		AddEnvVar  = 0x10000
 	};
 
-	void RegPath();
+	void SetPathVar();
 	void ReadCfg(std::ifstream cfg);
 	void SaveCfg(const char* path);
 	void ReadArgs(int argc, char* argv[]);

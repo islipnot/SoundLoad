@@ -4,7 +4,7 @@
 
 using json = nlohmann::json;
 
-std::string GetRawJson(std::string track, const std::string& CID)
+std::string GetJson(std::string track, const std::string& CID)
 {
 	if (track.find('?') != std::string::npos) // for when you use the copy link button rather than copying browser url
 	{
@@ -12,13 +12,13 @@ std::string GetRawJson(std::string track, const std::string& CID)
 	}
 
 	const std::string url = "https://api-v2.soundcloud.com/resolve?url=" + track + "&client_id=" + CID;
-	cpr::Response response = cpr::Get(cpr::Url{ url });
+	const cpr::Response response = cpr::Get(cpr::Url{ url });
 	
 	std::cout << "> RESOLUTION URL: " << url << '\n';
 
 	if (response.status_code != 200)
 	{
-		std::cerr << "ERROR: TRACK RESOLUTION FAILED || " << response.error.message << '\n';
+		std::cerr << "ERROR: TRACK RESOLUTION FAILED - " << response.error.message << '\n';
 		return {};
 	}
 
@@ -49,11 +49,12 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	tag->setArtist(TagLib::String(value.c_str(), TagLib::String::UTF8));
 
-	value = "(github.com/islipnot/SoundLoad)";
+	value = "Release date: " + std::string(data["created_at"]) +
+		    "\nDownloaded with: github.com/islipnot/SoundLoad";
 
 	if (data.contains("description"))
 	{
-		value.insert(0, std::string(data["description"]) + ' ');
+		value.insert(0, std::string(data["description"]) + "\n\n");
 	}
 
 	tag->setComment(TagLib::String(value.c_str(), TagLib::String::UTF8));
@@ -78,20 +79,34 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	// Getting track cover
 
+	value.clear();
+
 	if (cfg.cover.empty())
 	{
-		value = std::regex_replace(std::string(data["artwork_url"]), std::regex("-large."), "-original.");
-		cpr::Response response = cpr::Get(cpr::Url{ value });
-
-		std::cout << "> ARTWORK URL: " << value << '\n';
-
-		if (response.status_code == 200)
+		if (!data["artwork_url"].empty())
 		{
-			auto cover = new TagLib::ID3v2::AttachedPictureFrame;
-			cover->setPicture(TagLib::ByteVector(response.text.data(), static_cast<UINT>(response.text.size())));
-			tag->addFrame(cover);
+			value = std::regex_replace(std::string(data["artwork_url"]), std::regex("-large."), "-original.");
 		}
-		else std::cout << "FAILED TO GET TRACK COVER (ScApi.cpp:HandleMetadata) (IGNORING)\n";
+		else if (!std::string(data["user"]["avatar_url"]).empty())
+		{
+			value = std::regex_replace(std::string(data["user"]["avatar_url"]), std::regex("-large."), "-original.");
+		}
+
+		if (!value.empty())
+		{
+			cpr::Response response = cpr::Get(cpr::Url{ value });
+
+			std::cout << "> ARTWORK URL: " << value << '\n';
+
+			if (response.status_code == 200)
+			{
+				auto cover = new TagLib::ID3v2::AttachedPictureFrame;
+				cover->setPicture(TagLib::ByteVector(response.text.data(), static_cast<UINT>(response.text.size())));
+				tag->addFrame(cover);
+			}
+			else std::cout << "FAILED TO GET TRACK COVER (ScApi.cpp:HandleMetadata) (IGNORING)\n";
+		}
+		else std::cout << "NO COVER FOUND (ScApi.cpp:HandleMetadata) (IGNORING)\n";
 	}
 
 	file.save();
@@ -151,6 +166,45 @@ bool DownloadTrack(const json& data, Cfg& cfg)
 	// Handling metadata and MP3 tag
 
 	HandleMetadata(data, cfg, path);
+
+	return true;
+}
+
+bool DownloadPlaylist(const json& playlist, Cfg& cfg)
+{
+	// Requesting an array of resolved tracks from album
+	// Im using this ID method because playlist resolutions (GetJson()) dont seem to include all streaming links for some reason
+
+	std::string url = "https://api-v2.soundcloud.com/tracks?ids=";
+
+	for (const auto& tracks : playlist["tracks"])
+	{
+		url += std::to_string(int(tracks["id"])) + ',';
+	}
+
+	url.pop_back(); // Removing final comma
+	url += "&client_id=" + cfg.CID;
+
+	std::cout << "> ID RESOLUTION URL: " << url << '\n';
+
+	const cpr::Response response = cpr::Get(cpr::Url{ url });
+
+	if (response.status_code != 200)
+	{
+		std::cerr << "ERROR: PLAYLIST RESOLUTION FAILED - " << response.error.message << '\n';
+		return false;
+	}
+
+	// Downloading each track
+
+	if (playlist["is_album"] && cfg.album.empty()) cfg.album = playlist["title"];
+
+	const json data = json::parse(response.text);
+
+	for (const auto& track : data)
+	{
+		if (!DownloadTrack(track, cfg)) return false;
+	}
 
 	return true;
 }

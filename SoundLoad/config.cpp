@@ -3,7 +3,7 @@
 
 using json = nlohmann::json;
 
-void Cfg::RegPath()
+void Cfg::SetPathVar()
 {
 	if (!(flags & AddEnvVar) && MessageBox(nullptr, L"Add SoundLoad to environment variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) != IDYES)
 	{
@@ -235,5 +235,5 @@ Cfg::Cfg(int argc, char* argv[])
 
 	// Adding SoundLoad to environment variables if requested
 
-	if (!(flags & WasRan) || flags & AddEnvVar) RegPath();
+	if (!(flags & WasRan) || flags & AddEnvVar) SetPathVar();
 }
