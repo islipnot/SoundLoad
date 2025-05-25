@@ -50,7 +50,7 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 	tag->setArtist(TagLib::String(value.c_str(), TagLib::String::UTF8));
 
 	value = "Release date: " + std::string(data["created_at"]) +
-		    "\nDownloaded with: github.com/islipnot/SoundLoad";
+		    "\n(https://github.com/islipnot/SoundLoad)";
 
 	if (data.contains("description"))
 	{

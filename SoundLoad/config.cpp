@@ -10,10 +10,11 @@ void Cfg::SetPathVar()
 		return;
 	}
 
-	HKEY key;
+	HKEY key = nullptr;
 
-	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Environment", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &key) != ERROR_SUCCESS)
+	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Environment", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &key) != ERROR_SUCCESS || !key)
 	{
+		std::cout << "ERROR: FAILED TO OPEN HKEY_CURRENT_USER\\Environment (ignoring)\n";
 		return;
 	}
 
@@ -31,15 +32,15 @@ void Cfg::SetPathVar()
 
 			if (value.back() != L';') value.push_back(L';');
 
-			std::wstring NewPath = std::filesystem::current_path().wstring() + L"\\soundload.exe;";
+			std::wstring NewPath(ExeDir.begin(), ExeDir.end());
+			NewPath += L"soundload.exe;";
 
 			std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 			std::transform(NewPath.begin(), NewPath.end(), NewPath.begin(), ::tolower);
 
-			if (value.find(NewPath) != std::wstring::npos)
+			if (value.find(L"\\soundload.exe;") != std::wstring::npos)
 			{
 				std::cout << "SoundLoad already exists in environment variables!\n";
-
 				RegCloseKey(key);
 				return;
 			}
@@ -63,7 +64,19 @@ void Cfg::ReadCfg(std::ifstream cfg)
 {
 	json data;
 
-	try { cfg >> data; }
+	try 
+	{ 
+		cfg >> data;
+
+		if (data["ran"])
+		{
+			flags |= WasRan;
+		}
+		else
+		{
+
+		}
+	}
 	catch (const std::exception& e) 
 	{
 		cfg.close();
@@ -93,7 +106,7 @@ void Cfg::ReadCfg(std::ifstream cfg)
 	}
 }
 
-void Cfg::SaveCfg(const char* path)
+void Cfg::SaveCfg(const std::string& path)
 {
 	json data;
 	JsonCfg CfgData;
@@ -105,11 +118,8 @@ void Cfg::SaveCfg(const char* path)
 		InCfg >> data;
 		CfgData = data.get<JsonCfg>();
 
-		if (!CfgData.ran)
-		{
-			CfgData.ran = true;
-			flags |= WasRan;
-		}
+		if (!CfgData.ran) CfgData.ran = true;
+		else flags |= WasRan;
 	}
 	catch (const std::exception& e) {}
 
@@ -142,10 +152,10 @@ void Cfg::ReadArgs(int argc, char* argv[])
 		{ "-save",    a_save     },
 		{ "-year",    a_year     },
 		{ "-num",     a_num      },
-		{ "-envvar",  WasRan }
+		{ "-envvar",  a_envvar   }
 	};
 
-	for (int i = 1; i < argc; i += 2)
+	for (int i = 1; i < argc; ++i)
 	{
 		if (i == 1) // Checking if the first argument is a track link or not
 		{
@@ -170,14 +180,19 @@ void Cfg::ReadArgs(int argc, char* argv[])
 			return;
 		}
 
-		if (it->first != "-save" && it->first != "-envvar" && i + 1 >= argc) // I chose not to ignore this error because it might have undesired effects
-		{
-			std::cerr << "ERROR: NO VALUE PROVIDED FOR ARGUMENT - " << argv[i] << '\n';
-			status |= Error;
-			return;
-		}
-
 		const char* v = argv[i + 1];
+
+		if (it->first != "-save" && it->first != "-envvar")
+		{
+			if (i + 1 > argc)
+			{
+				std::cerr << "ERROR: NO VALUE PROVIDED FOR ARGUMENT - " << argv[i] << '\n';
+				status |= Error;
+				return;
+			}
+
+			++i;
+		}
 
 		switch (it->second)
 		{
@@ -204,24 +219,37 @@ Cfg::Cfg(int argc, char* argv[])
 
 	if (status & Error) return;
 
-	// Handling config
-	
-	constexpr const char* name = "cfg.json";
+	// Getting executable directory
 
-	if (!std::filesystem::exists(name))
+	ExeDir.resize(MAX_PATH);
+
+	if (!GetModuleFileNameA(nullptr, ExeDir.data(), MAX_PATH))
 	{
-		std::ofstream cfg(name);
+		std::cerr << "ERROR: FAILED TO GET EXECUTABLE DIRECTORY (" << GetLastError() << ")\n";
+		status |= Error;
+		return;
+	}
+
+	ExeDir = std::filesystem::path(ExeDir).parent_path().string() + '\\';
+
+	// Handling cfg.json
+
+	const std::string CfgPath = ExeDir + "cfg.json";
+
+	if (!std::filesystem::exists(CfgPath))
+	{
+		std::ofstream cfg(CfgPath);
 		cfg.close();
 
 		DBG_MSG("Created cfg.json");
 	}
 
-	if (status & Save) SaveCfg(name);
+	if (status & Save) SaveCfg(CfgPath);
 	
+	ReadCfg(std::ifstream(CfgPath));
+
 	if (!(status & NoLink))
 	{
-		ReadCfg(std::ifstream(name));
-
 		if (CID.empty())
 		{
 			std::cerr << "ERROR: CLIENT ID NOT PROVIDED\n";
@@ -236,4 +264,6 @@ Cfg::Cfg(int argc, char* argv[])
 	// Adding SoundLoad to environment variables if requested
 
 	if (!(flags & WasRan) || flags & AddEnvVar) SetPathVar();
+
+	ExeDir.clear(); // This isn't used after SetPathVar()
 }

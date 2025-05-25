@@ -36,7 +36,7 @@ class Cfg
 
 	void SetPathVar();
 	void ReadCfg(std::ifstream cfg);
-	void SaveCfg(const char* path);
+	void SaveCfg(const std::string& path);
 	void ReadArgs(int argc, char* argv[]);
 
 	int flags = 0;
@@ -73,6 +73,7 @@ public:
 	std::string CID;    // SoundCloud client ID
 	std::string output; // MP3 output directory
 	std::string cover;  // Path for MP3 cover (to get from or store)
+	std::string ExeDir; // Executable directory (this is important if SoundLoad.exe was located via PATH variables)
 
 	int status = 0;
 };
