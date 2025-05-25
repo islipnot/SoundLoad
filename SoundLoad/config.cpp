@@ -33,12 +33,11 @@ void Cfg::SetPathVar()
 			if (value.back() != L';') value.push_back(L';');
 
 			std::wstring NewPath(ExeDir.begin(), ExeDir.end());
-			NewPath += L"soundload.exe;";
 
 			std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 			std::transform(NewPath.begin(), NewPath.end(), NewPath.begin(), ::tolower);
 
-			if (value.find(L"\\soundload.exe;") != std::wstring::npos)
+			if (value.find(NewPath) != std::wstring::npos)
 			{
 				std::cout << "SoundLoad already exists in environment variables!\n";
 				RegCloseKey(key);
@@ -148,6 +147,7 @@ void Cfg::ReadArgs(int argc, char* argv[])
 		{ "-artist",  a_artist   },
 		{ "-genre",   a_genre    },
 		{ "-out",     a_out      },
+		{ "-imgout",  a_ImgOut   },
 		{ "-cover",   a_cover    },
 		{ "-save",    a_save     },
 		{ "-year",    a_year     },
@@ -204,6 +204,7 @@ void Cfg::ReadArgs(int argc, char* argv[])
 		case a_artist:  { artist  = v; break; }
 		case a_genre:   { genre   = v; break; }
 		case a_out:     { output  = v; break; }
+		case a_ImgOut:  { cover   = v; break; }
 		case a_cover:   { cover   = v; break; }
 		case a_save:    { status |= Save;         break; }
 		case a_envvar:  { flags  |= AddEnvVar;    break; }

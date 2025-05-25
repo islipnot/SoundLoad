@@ -31,7 +31,8 @@ class Cfg
 		a_year     = 0x4000,
 		a_num      = 0x8000,
 		a_envvar   = 0x10000,
-		AddEnvVar  = 0x10000
+		AddEnvVar  = 0x10000,
+		a_ImgOut   = 0x20000
 	};
 
 	void SetPathVar();
