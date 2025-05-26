@@ -65,7 +65,7 @@ public:
 	std::string artist;  // Album artist
 	std::string album;   // Album
 	int year = -1;       // Year
-	int num  = -1;       // # (Track Number)
+	int TrackNum  = -1;       // # (Track Number)
 	std::string genre;   // Genre
 
 	// Extra

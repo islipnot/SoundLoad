@@ -1,7 +1,7 @@
 #include "pch.hpp"
 #include "config.hpp"
 
-using json = nlohmann::json;
+using Json = nlohmann::json;
 
 void Cfg::SetPathVar()
 {
@@ -61,20 +61,12 @@ void Cfg::SetPathVar()
 
 void Cfg::ReadCfg(std::ifstream cfg)
 {
-	json data;
+	Json data;
 
 	try 
 	{ 
 		cfg >> data;
-
-		if (data["ran"])
-		{
-			flags |= WasRan;
-		}
-		else
-		{
-
-		}
+		if (data["ran"]) flags |= WasRan;
 	}
 	catch (const std::exception& e) 
 	{
@@ -107,7 +99,7 @@ void Cfg::ReadCfg(std::ifstream cfg)
 
 void Cfg::SaveCfg(const std::string& path)
 {
-	json data;
+	Json data;
 	JsonCfg CfgData;
 
 	std::ifstream InCfg(path);
@@ -130,7 +122,7 @@ void Cfg::SaveCfg(const std::string& path)
 
 	std::ofstream cfg(path);
 
-	if (cfg.is_open()) cfg << json(CfgData).dump(4);
+	if (cfg.is_open()) cfg << Json(CfgData).dump(4);
 	else std::cout << "ERROR: FAILED TO OPEN cfg.json FOR WRITING (ignoring)\n";
 
 	cfg.close();
@@ -196,20 +188,20 @@ void Cfg::ReadArgs(int argc, char* argv[])
 
 		switch (it->second)
 		{
-		case a_cid:     { CID     = v; break; }
-		case a_fname:   { fName   = v; break; }
-		case a_title:   { title   = v; break; }
-		case a_album:   { album   = v; break; }
-		case a_artists: { artists = v; break; }
-		case a_artist:  { artist  = v; break; }
-		case a_genre:   { genre   = v; break; }
-		case a_out:     { output  = v; break; }
-		case a_ImgOut:  { cover   = v; break; }
-		case a_cover:   { cover   = v; break; }
-		case a_save:    { status |= Save;         break; }
-		case a_envvar:  { flags  |= AddEnvVar;    break; }
-		case a_year:    { year    = std::stoi(v); break; }
-		case a_num:     { num     = std::stoi(v); break; }
+		case a_cid:     { CID      = v; break; }
+		case a_fname:   { fName    = v; break; }
+		case a_title:   { title    = v; break; }
+		case a_album:   { album    = v; break; }
+		case a_artists: { artists  = v; break; }
+		case a_artist:  { artist   = v; break; }
+		case a_genre:   { genre    = v; break; }
+		case a_out:     { output   = v; break; }
+		case a_ImgOut:  { cover    = v; break; }
+		case a_cover:   { cover    = v; break; }
+		case a_save:    { status  |= Save;         break; }
+		case a_envvar:  { flags   |= AddEnvVar;    break; }
+		case a_year:    { year     = std::stoi(v); break; }
+		case a_num:     { TrackNum = std::stoi(v); break; }
 		}
 	}
 }
@@ -237,7 +229,7 @@ Cfg::Cfg(int argc, char* argv[])
 
 	const std::string CfgPath = ExeDir + "cfg.json";
 
-	if (!std::filesystem::exists(CfgPath))
+	if (!std::filesystem::exists(CfgPath) && status & Save)
 	{
 		std::ofstream cfg(CfgPath);
 		cfg.close();

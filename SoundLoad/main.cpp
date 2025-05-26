@@ -2,7 +2,7 @@
 #include "config.hpp"
 #include "ScApi.hpp"
 
-using json = nlohmann::json;
+using Json = nlohmann::json;
 
 int main(int argc, char* argv[])
 {
@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
 	}
 
 	std::cout << "[*] HANDLING ARGUMENTS...\n\n";
-	
+
 	Cfg cfg(argc, argv);
 
 	if (cfg.status & Cfg::Error) return -1;
@@ -21,15 +21,8 @@ int main(int argc, char* argv[])
 
 	std::cout << "\n[*] SCRAPING PAGE DATA...\n\n";
 
-	const json data = json::parse(GetJson(argv[1], cfg.CID));
-
-	if (data["kind"] == "playlist")
-	{
-		if (!DownloadPlaylist(data, cfg)) return -1;
-	}
-	else if (!DownloadTrack(data, cfg)) return -1;
-	
-	if (data.empty()) return -1;
+	PostData ScPost(argv[1], &cfg);
+	if (!ScPost.download()) return -1;
 	
 	std::cout << "\n[!] DOWNLOAD SUCCESSFUL!\n";
 

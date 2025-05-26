@@ -1,31 +1,130 @@
 ﻿#include "pch.hpp"
-#include "config.hpp"
 #include "ScApi.hpp"
+#include "config.hpp"
 
-using json = nlohmann::json;
+using Json = nlohmann::json;
 
-std::string GetJson(std::string track, const std::string& CID)
+bool Playlist::GetTrackListIDs(const Json& json)
 {
-	if (track.find('?') != std::string::npos) // for when you use the copy link button rather than copying browser url
+	constexpr auto tracks = "tracks";
+
+	if (!json.contains(tracks))
 	{
-		track.erase(track.find_first_of('?'));
+		std::cerr << "ERROR: tracks property not found\n";
+		return false;
 	}
 
-	const std::string url = "https://api-v2.soundcloud.com/resolve?url=" + track + "&client_id=" + CID;
+	UrlData = "https://api-v2.soundcloud.com/tracks?ids=";
+
+	for (const auto& track : json[tracks])
+	{
+		UrlData += std::to_string(track.value("id", 0)) + ',';
+	}
+
+	UrlData.pop_back(); // removing final comma
+	UrlData += "&client_id=" + cfg->CID;
+
+	return true;
+}
+
+bool Track::GetStreamingUrl(const Json& json)
+{
+	constexpr auto media = "media";
+	constexpr auto transcodings = "transcodings";
+
+	if (!json.contains(media))
+	{
+		std::cerr << "ERROR: media property not found\n";
+		return false;
+	}
+
+	if (!json[media].contains(transcodings))
+	{
+		std::cerr << "ERROR: transcodings property not found\n";
+		return false;
+	}
+
+	for (const auto& transcoding : json[media][transcodings])
+	{
+		if (transcoding["format"]["protocol"] == "progressive")
+		{
+			UrlData = transcoding.value("url", std::string{}) + "?client_id=" + cfg->CID;
+			DBG_MSG("> PROGRESSIVE URL: " + UrlData);
+			return true;
+		}
+	}
+
+	std::cerr << "ERROR: progressive streaming url not found\n";
+	return false;
+}
+
+Track::Track(std::string link, Cfg* pCfg)
+{
+	// Requesting track data
+
+	if (link.find('?') != std::string::npos) // for when you use the copy link button rather than copying browser url
+	{
+		link.erase(link.find_first_of('?'));
+	}
+
+	const std::string url = "https://api-v2.soundcloud.com/resolve?url=" + link + "&client_id=" + pCfg->CID;
 	const cpr::Response response = cpr::Get(cpr::Url{ url });
-	
+
 	std::cout << "> RESOLUTION URL: " << url << '\n';
 
 	if (response.status_code != 200)
 	{
 		std::cerr << "ERROR: TRACK RESOLUTION FAILED - " << response.error.message << '\n';
-		return {};
+		fail = true;
+		return;
 	}
 
-	return response.text;
+	// Setting member variable values
+
+	const Json json = Json::parse(response.text);
+
+	CoverUrl    = std::regex_replace(json.value("artwork_url", std::string{}), std::regex("-large."), "-original.");
+	CreatedAt   = json.value("created_at",  std::string{});
+	description = json.value("description", std::string{});
+	genre       = json.value("genre",       std::string{});
+	tags        = json.value("tag_list",    std::string{});
+	title       = json.value("title",       std::string{});
+	cfg         = pCfg;
+
+	constexpr auto kind = "kind";
+	constexpr auto publisher_metadata = "publisher_metadata";
+
+	if (json.contains(kind))
+	{
+		const char PostType = json[kind].get<std::string>()[0];
+
+		if (PostType == 't')
+		{
+			id = json.value("id", 0);
+			type = track;
+		}
+		else if (PostType == 'a') type = album;
+		else type = playlist;
+	}
+
+	if (json.contains(publisher_metadata)) artist = json[publisher_metadata].value("artist", std::string{});
+	
+	if (type == track)
+	{
+		if (!GetStreamingUrl(json))
+		{
+			fail = true;
+			return;
+		}
+	}
+	else if (!GetTrackListIDs(json))
+	{
+		fail = true;
+		return;
+	}
 }
 
-void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
+void Track::HandleMetadata(std::string& path)
 {
 	// Creating an ID3v2 tag for the MP3
 
@@ -34,66 +133,55 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 
 	// Setting track properties
 
-	std::string value = cfg.title.empty() ? std::string(data["title"]) : cfg.title;
+	std::string value = title.empty() ? cfg->title : title;
 
 	tag->setTitle(TagLib::String(value.c_str(), TagLib::String::UTF8)); // if a title wasn't provided it'll use the file name (config.cpp/Cfg::Cfg)
 
-	if (!cfg.album.empty())
-	{
-		value = cfg.album;
-	}
-
+	if (!cfg->album.empty()) value = cfg->album;
+	else if (!cfg->title.empty()) value = cfg->title;
+	
 	tag->setAlbum(TagLib::String(value.c_str(), TagLib::String::UTF8)); // album defaults to track title for spotify, if you import it there
 
-	value = cfg.artists.empty() ? std::string(data["user"]["username"]) : cfg.artists;
+	value = cfg->artists.empty() ? artist : cfg->artists;
 
 	tag->setArtist(TagLib::String(value.c_str(), TagLib::String::UTF8));
 
-	value = "Release date: " + std::string(data["created_at"]) +
-		    "\n(https://github.com/islipnot/SoundLoad)";
+	value = "Release date: " + CreatedAt + "\n\n(saved with https://github.com/islipnot/SoundLoad)";
 
-	if (data.contains("description"))
-	{
-		value.insert(0, std::string(data["description"]) + "\n\n");
-	}
-
+	if (!description.empty()) value.insert(0, description + "\n\n");
+	
 	tag->setComment(TagLib::String(value.c_str(), TagLib::String::UTF8));
 
-	if (data.contains("genre") || !cfg.genre.empty())
+	if (!genre.empty() || !cfg->genre.empty())
 	{
-		if (cfg.genre.empty()) value = std::string(data["genre"]);
-		else value = cfg.genre;
+		if (cfg->genre.empty()) value = genre;
+		else value = cfg->genre;
 
 		tag->setGenre(value.c_str());
 	}
 
-	if (cfg.num != -1)
+	if (cfg->TrackNum != -1)
 	{
-		tag->setTrack(cfg.num);
+		tag->setTrack(cfg->TrackNum);
 	}
 
-	if (cfg.year != -1)
+	if (cfg->year != -1)
 	{
-		tag->setYear(cfg.year);
+		tag->setYear(cfg->year);
 	}
 
 	// Getting track cover
 
 	value.clear();
 
-	if (cfg.cover.empty())
+	if (cfg->cover.empty())
 	{
-		if (!data["artwork_url"].empty())
-		{
-			value = std::regex_replace(std::string(data["artwork_url"]), std::regex("-large."), "-original.");
-		}
-		else if (!std::string(data["user"]["avatar_url"]).empty())
-		{
-			value = std::regex_replace(std::string(data["user"]["avatar_url"]), std::regex("-large."), "-original.");
-		}
+		const bool NoUrl = CoverUrl.empty();
 
-		if (!value.empty())
+		if (!NoUrl || !ArtistPfp.empty())
 		{
+			value = std::regex_replace(NoUrl ? ArtistPfp : CoverUrl, std::regex("-large."), "-original.");
+
 			cpr::Response response = cpr::Get(cpr::Url{ value });
 
 			std::cout << "> ARTWORK URL: " << value << '\n';
@@ -112,30 +200,18 @@ void HandleMetadata(const json& data, Cfg& cfg, std::string& path)
 	file.save();
 }
 
-bool DownloadTrack(const json& data, Cfg& cfg)
+bool Track::DownloadTrack()
 {
-	// Getting the streaming url
-
-	std::string url;
-
-	for (const auto& transcoding : data["media"]["transcodings"])
-	{
-		if (transcoding["format"]["protocol"] == "progressive")
-		{
-			url = transcoding["url"];
-		}
-	}
-
 	// Requesting a download link
 
-	cpr::Response response = cpr::Get(cpr::Url{ url + "?client_id=" + cfg.CID });
+	cpr::Response response = cpr::Get(cpr::Url{ UrlData });
 	if (response.status_code != 200)
 	{
 		std::cerr << "FAILED TO GET TRACK (ScApi.cpp:DownloadTrack A)\n";
 		return false;
 	}
 
-	url = json::parse(response.text)["url"];
+	const std::string url = Json::parse(response.text)["url"];
 
 	DBG_MSG("> STREAMING URL: " + url);
 
@@ -150,12 +226,12 @@ bool DownloadTrack(const json& data, Cfg& cfg)
 
 	std::string path;
 
-	if (cfg.fName.empty()) path = data["title"];
-	else path = cfg.fName;
+	if (cfg->fName.empty()) path = title;
+	else path = cfg->fName;
 
 	path = std::regex_replace(path, std::regex("[<>:\"/\\|?*]"), "_");
 
-	if (!cfg.output.empty()) path.insert(0, cfg.output);
+	if (!cfg->output.empty()) path.insert(0, cfg->output);
 
 	path += ".mp3";
 	
@@ -165,25 +241,17 @@ bool DownloadTrack(const json& data, Cfg& cfg)
 
 	// Handling metadata and MP3 tag
 
-	HandleMetadata(data, cfg, path);
+	HandleMetadata(path);
 
 	return true;
 }
 
-bool DownloadPlaylist(const json& playlist, Cfg& cfg)
+bool Playlist::DownloadAlbum()
 {
 	// Requesting an array of resolved tracks from album
 	// Im using this ID method because playlist resolutions (GetJson()) dont seem to include all streaming links for some reason
 
-	std::string url = "https://api-v2.soundcloud.com/tracks?ids=";
-
-	for (const auto& tracks : playlist["tracks"])
-	{
-		url += std::to_string(int(tracks["id"])) + ',';
-	}
-
-	url.pop_back(); // Removing final comma
-	url += "&client_id=" + cfg.CID;
+	const std::string url = "https://api-v2.soundcloud.com/tracks?ids=" + UrlData + "&client_id=" + cfg->CID;
 
 	std::cout << "> ID RESOLUTION URL: " << url << '\n';
 
@@ -197,14 +265,33 @@ bool DownloadPlaylist(const json& playlist, Cfg& cfg)
 
 	// Downloading each track
 
-	if (playlist["is_album"] && cfg.album.empty()) cfg.album = playlist["title"];
+	if (type == album && cfg->album.empty()) cfg->album = title;
 
-	const json data = json::parse(response.text);
+	const Json tracks = Json::parse(response.text);
 
-	for (const auto& track : data)
+	for (const auto& track : tracks)
 	{
-		if (!DownloadTrack(track, cfg)) return false;
+		const char* permalink = track.value("permalink_url", nullptr);
+
+		if (permalink == nullptr)
+		{
+			std::cout << "ERROR: TRACK permalink_url IS NULL (ignoring)\n";
+			continue;
+		}
+
+		Track track(permalink, cfg);
+		
+		if (!track.DownloadTrack())
+		{
+			if (track.fail) std::cerr << "ERROR: TRACK DOWNLOAD FAILED\n";
+			else std::cout << "ERROR: TRACK DOWNLOAD FAILED (ignoring)\n";
+		}
 	}
 
+	return true;
+}
+
+bool Track::DownloadCover()
+{
 	return true;
 }
