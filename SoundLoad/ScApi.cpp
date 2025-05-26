@@ -107,7 +107,8 @@ Track::Track(std::string link, Cfg* pCfg)
 		else type = playlist;
 	}
 
-	if (json.contains(publisher_metadata)) artist = json[publisher_metadata].value("artist", std::string{});
+	if (!json[publisher_metadata].is_null()) artist = json[publisher_metadata].value("artist", std::string{});
+	else artist = json["user"]["username"].get<std::string>();
 	
 	if (type == track)
 	{
