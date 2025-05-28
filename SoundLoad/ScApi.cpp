@@ -4,6 +4,83 @@
 
 using Json = nlohmann::json;
 
+Track::Track(std::string link, Cfg* pCfg)
+{
+	// Requesting track data
+
+	if (link.find('?') != std::string::npos) // for when you use the copy link button rather than copying browser url
+	{
+		link.erase(link.find_first_of('?'));
+	}
+
+	const std::string url = "https://api-v2.soundcloud.com/resolve?url=" + link + "&client_id=" + pCfg->CID;
+	const cpr::Response r = cpr::Get(cpr::Url{ url });
+
+	std::cout << "> RESOLUTION URL: " << url << '\n';
+
+	if (RequestFail(r))
+	{
+		FetchErr(r);
+		flags |= Error;
+		return;
+	}
+
+	// Setting member variable values
+
+	const Json json = Json::parse(r.text);
+
+	constexpr auto ArtUrl = "artwork_url";
+	constexpr auto large = "-large.";
+	constexpr auto og = "-original.";
+
+	if (json[ArtUrl].is_null())
+	{
+		const auto& PfpUrl = json["user"]["avatar_url"];
+		if (!PfpUrl.is_null()) CoverUrl = std::regex_replace(PfpUrl.get<std::string>(), std::regex(large), og);
+	}
+	else CoverUrl = std::regex_replace(json[ArtUrl].get<std::string>(), std::regex(large), og);
+
+	CreatedAt   = json.value("created_at",  std::string{});
+	description = json.value("description", std::string{});
+	genre       = json.value("genre",       std::string{});
+	tags        = json.value("tag_list",    std::string{});
+	title       = json.value("title",       std::string{});
+	cfg         = pCfg;
+
+	constexpr auto kind = "kind";
+	constexpr auto publisher_metadata = "publisher_metadata";
+
+	if (json.contains(kind))
+	{
+		const char PostType = json[kind].get<std::string>()[0];
+
+		if (PostType == 't')
+		{
+			id = json.value("id", 0);
+			type = tTrack;
+		}
+		else if (PostType == 'a') type = tAlbum;
+		else type = tPlaylist;
+	}
+
+	if (!json[publisher_metadata].is_null()) artist = json[publisher_metadata].value("artist", std::string{});
+	else artist = json["user"]["username"].get<std::string>(); // using get() instead of value() cuz this will never be null
+	
+	if (type == tTrack)
+	{
+		if (!GetStreamingUrl(json))
+		{
+			flags |= Error;
+			return;
+		}
+	}
+	else if (!GetTrackListIDs(json))
+	{
+		flags |= Error;
+		return;
+	}
+}
+
 bool Playlist::GetTrackListIDs(const Json& json)
 {
 	constexpr auto tracks = "tracks";
@@ -66,73 +143,6 @@ bool Track::GetStreamingUrl(const Json& json)
 
 	std::cerr << "ERROR: NO PROGRESSIVE/HLS-MPEG URL FOUND\n";
 	return false;
-}
-
-Track::Track(std::string link, Cfg* pCfg)
-{
-	// Requesting track data
-
-	if (link.find('?') != std::string::npos) // for when you use the copy link button rather than copying browser url
-	{
-		link.erase(link.find_first_of('?'));
-	}
-
-	const std::string url = "https://api-v2.soundcloud.com/resolve?url=" + link + "&client_id=" + pCfg->CID;
-	const cpr::Response r = cpr::Get(cpr::Url{ url });
-
-	std::cout << "> RESOLUTION URL: " << url << '\n';
-
-	if (RequestFail(r))
-	{
-		FetchErr(r);
-		flags |= Error;
-		return;
-	}
-
-	// Setting member variable values
-
-	const Json json = Json::parse(r.text);
-
-	CoverUrl    = std::regex_replace(json.value("artwork_url", std::string{}), std::regex("-large."), "-original.");
-	CreatedAt   = json.value("created_at",  std::string{});
-	description = json.value("description", std::string{});
-	genre       = json.value("genre",       std::string{});
-	tags        = json.value("tag_list",    std::string{});
-	title       = json.value("title",       std::string{});
-	cfg         = pCfg;
-
-	constexpr auto kind = "kind";
-	constexpr auto publisher_metadata = "publisher_metadata";
-
-	if (json.contains(kind))
-	{
-		const char PostType = json[kind].get<std::string>()[0];
-
-		if (PostType == 't')
-		{
-			id = json.value("id", 0);
-			type = tTrack;
-		}
-		else if (PostType == 'a') type = tAlbum;
-		else type = tPlaylist;
-	}
-
-	if (!json[publisher_metadata].is_null()) artist = json[publisher_metadata].value("artist", std::string{});
-	else artist = json["user"]["username"].get<std::string>(); // using get() instead of value() cuz this will never be null
-	
-	if (type == tTrack)
-	{
-		if (!GetStreamingUrl(json))
-		{
-			flags |= Error;
-			return;
-		}
-	}
-	else if (!GetTrackListIDs(json))
-	{
-		flags |= Error;
-		return;
-	}
 }
 
 void Track::HandleMetadata(std::string& path)
