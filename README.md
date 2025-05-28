@@ -23,7 +23,7 @@ You must provide a client ID every use unless you save one to cfg.json. This can
 - ```-num     <MP3 # property>```
 - ```-out     <Output directory>```
 - ```-save    (save to cfg.json)```
-- ```-EnvVar  (add SoundLoad to user environment variables)```
+- ```-EnvVar  (add SoundLoad to PATH variables)```
 
 ### Downloading a track/album/playlist
 - Put the SoundCloud link as the first argument
@@ -33,7 +33,7 @@ You must provide a client ID every use unless you save one to cfg.json. This can
 
 ## Tips
 - If you want to have more control over the MP3 metadata/name/path, you can use any combination of arguments listed above. If ```-save``` is used, all that will be saved (if provided) is the CID and output directory.
-- When first ran, or when the "ran" field of cfg.json is not detected, you will have the option to add the program to your user environment variables. This allows you to run the program no matter what the command prompt's directory is. Using the ```-EnvVar``` argument forces the program to do this.
+- When first ran, or when the "ran" field of cfg.json is false, you will have the option to add the program to your PATH variables. Using the ```-EnvVar``` argument forces the program to do this.
 
 ## Notes
 - Non-ASCII characters are supported in every case except command line arguments. This is subject to change.

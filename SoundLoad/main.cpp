@@ -12,14 +12,10 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	std::cout << "[*] HANDLING ARGUMENTS...\n\n";
-
 	Cfg cfg(argc, argv);
 
 	if (cfg.status & Cfg::Error) return -1;
 	if (cfg.status & Cfg::NoLink) return 0;
-
-	std::cout << "\n[*] SCRAPING PAGE DATA...\n\n";
 
 	PostData ScPost(argv[1], &cfg);
 	if (!ScPost.download()) return -1;

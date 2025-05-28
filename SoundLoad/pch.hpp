@@ -12,18 +12,20 @@
 
 #include <Windows.h>
 
-#include "textidentificationframe.h"
-#include "attachedpictureframe.h"
-#include "id3v2framefactory.h"
-#include "id3v2tag.h"
-#include "mpegfile.h"
-#include "tstring.h"
-#include "fileref.h"
-#include "tag.h"
+#include "TagLib/attachedpictureframe.h"
+#include "TagLib/id3v2tag.h"
+#include "TagLib/mpegfile.h"
+#include "TagLib/fileref.h"
 
 #include "cpr.h"
 
 #include "json.hpp"
+
+// Debugging macros
+
+#define FetchErr(response) std::cerr << "REQUEST FAILED: " << response.url << " (" << response.error.message << " )\n" // response must be a cpr::Response object
+
+#define RequestFail(response) response.status_code != 200 // response must be a cpr::Response object
 
 #ifdef _DEBUG
 	#define DBG_MSG(msg) std::cout << msg << '\n'
@@ -32,6 +34,7 @@
 #endif
 
 /* TODO
-- sharex 
-- option to download just the cover of a song
+- download just the cover of a song
+- cover retrieval paths
+- expand config usage
 */

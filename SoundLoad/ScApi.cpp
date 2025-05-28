@@ -46,15 +46,25 @@ bool Track::GetStreamingUrl(const Json& json)
 
 	for (const auto& transcoding : json[media][transcodings])
 	{
-		if (transcoding["format"]["protocol"] == "progressive")
+		const auto format = transcoding["format"];
+		const bool IsHls = format["protocol"] == "hls";
+
+		if ((format["protocol"] == "progressive") || (IsHls && format["mime_type"] == "audio/mpeg"))
 		{
-			UrlData = transcoding.value("url", std::string{}) + "?client_id=" + cfg->CID;
-			DBG_MSG("> PROGRESSIVE URL: " + UrlData);
+			UrlData = transcoding["url"].get<std::string>() + "?client_id=" + cfg->CID;
+
+			if (IsHls)
+			{
+				flags |= Hls;
+				DBG_MSG("> HLS URL: " + UrlData);
+			}
+			else { DBG_MSG("> PROGRESSIVE URL: " + UrlData); }
+
 			return true;
 		}
 	}
 
-	std::cerr << "ERROR: progressive streaming url not found\n";
+	std::cerr << "ERROR: NO PROGRESSIVE/HLS-MPEG URL FOUND\n";
 	return false;
 }
 
@@ -68,20 +78,20 @@ Track::Track(std::string link, Cfg* pCfg)
 	}
 
 	const std::string url = "https://api-v2.soundcloud.com/resolve?url=" + link + "&client_id=" + pCfg->CID;
-	const cpr::Response response = cpr::Get(cpr::Url{ url });
+	const cpr::Response r = cpr::Get(cpr::Url{ url });
 
 	std::cout << "> RESOLUTION URL: " << url << '\n';
 
-	if (response.status_code != 200)
+	if (RequestFail(r))
 	{
-		std::cerr << "ERROR: TRACK RESOLUTION FAILED - " << response.error.message << '\n';
-		fail = true;
+		FetchErr(r);
+		flags |= Error;
 		return;
 	}
 
 	// Setting member variable values
 
-	const Json json = Json::parse(response.text);
+	const Json json = Json::parse(r.text);
 
 	CoverUrl    = std::regex_replace(json.value("artwork_url", std::string{}), std::regex("-large."), "-original.");
 	CreatedAt   = json.value("created_at",  std::string{});
@@ -101,79 +111,67 @@ Track::Track(std::string link, Cfg* pCfg)
 		if (PostType == 't')
 		{
 			id = json.value("id", 0);
-			type = track;
+			type = tTrack;
 		}
-		else if (PostType == 'a') type = album;
-		else type = playlist;
+		else if (PostType == 'a') type = tAlbum;
+		else type = tPlaylist;
 	}
 
 	if (!json[publisher_metadata].is_null()) artist = json[publisher_metadata].value("artist", std::string{});
-	else artist = json["user"]["username"].get<std::string>();
+	else artist = json["user"]["username"].get<std::string>(); // using get() instead of value() cuz this will never be null
 	
-	if (type == track)
+	if (type == tTrack)
 	{
 		if (!GetStreamingUrl(json))
 		{
-			fail = true;
+			flags |= Error;
 			return;
 		}
 	}
 	else if (!GetTrackListIDs(json))
 	{
-		fail = true;
+		flags |= Error;
 		return;
 	}
 }
 
 void Track::HandleMetadata(std::string& path)
 {
-	// Creating an ID3v2 tag for the MP3
-
 	TagLib::MPEG::File file(path.c_str());
 	TagLib::ID3v2::Tag* tag = file.ID3v2Tag(true);
 
-	// Setting track properties
+	// Title
 
-	std::string value = title.empty() ? cfg->title : title;
+	std::string value = cfg->title.empty() ? title : cfg->title;
+	tag->setTitle(ToUtf8(value));
 
-	tag->setTitle(TagLib::String(value.c_str(), TagLib::String::UTF8)); // if a title wasn't provided it'll use the file name (config.cpp/Cfg::Cfg)
+	// Album
 
 	if (!cfg->album.empty()) value = cfg->album;
 	else if (!cfg->title.empty()) value = cfg->title;
-	
-	tag->setAlbum(TagLib::String(value.c_str(), TagLib::String::UTF8)); // album defaults to track title for spotify, if you import it there
 
-	value = cfg->artists.empty() ? artist : cfg->artists;
+	tag->setAlbum(ToUtf8(value));
 
-	tag->setArtist(TagLib::String(value.c_str(), TagLib::String::UTF8));
+	// Artist
 
-	value = "Release date: " + CreatedAt + "\n\n(saved with https://github.com/islipnot/SoundLoad)";
+	tag->setArtist(ToUtf8((cfg->artists.empty() ? artist : cfg->artists)));
 
+	// Comments
+
+	value = "Release date: " + CreatedAt + "\n\nsaved with https://github.com/islipnot/SoundLoad";
 	if (!description.empty()) value.insert(0, description + "\n\n");
 	
-	tag->setComment(TagLib::String(value.c_str(), TagLib::String::UTF8));
+	tag->setComment(ToUtf8(value));
 
-	if (!genre.empty() || !cfg->genre.empty())
-	{
-		if (cfg->genre.empty()) value = genre;
-		else value = cfg->genre;
+	// Genre/track/year
 
-		tag->setGenre(value.c_str());
-	}
+	if (!cfg->genre.empty()) tag->setGenre(ToUtf8(cfg->genre));
+	else if (!genre.empty()) tag->setGenre(ToUtf8(genre));
 
-	if (cfg->TrackNum != -1)
-	{
-		tag->setTrack(cfg->TrackNum);
-	}
-
-	if (cfg->year != -1)
-	{
-		tag->setYear(cfg->year);
-	}
-
-	// Getting track cover
-
-	value.clear();
+	if (cfg->TrackNum != -1) tag->setTrack(cfg->TrackNum);
+	if (cfg->year != -1) tag->setYear(cfg->year);
+	
+	// MP3 cover
 
 	if (cfg->cover.empty())
 	{
@@ -182,64 +180,103 @@ void Track::HandleMetadata(std::string& path)
 		if (!NoUrl || !ArtistPfp.empty())
 		{
 			value = std::regex_replace(NoUrl ? ArtistPfp : CoverUrl, std::regex("-large."), "-original.");
+			cpr::Response r = cpr::Get(cpr::Url{ value });
 
-			cpr::Response response = cpr::Get(cpr::Url{ value });
-
-			std::cout << "> ARTWORK URL: " << value << '\n';
-
-			if (response.status_code == 200)
+			if (!RequestFail(r))
 			{
+				std::cout << "> ARTWORK URL: " << value << '\n';
+
 				auto cover = new TagLib::ID3v2::AttachedPictureFrame;
-				cover->setPicture(TagLib::ByteVector(response.text.data(), static_cast<UINT>(response.text.size())));
+				cover->setPicture(TagLib::ByteVector(r.text.data(), static_cast<UINT>(r.text.size())));
 				tag->addFrame(cover);
 			}
-			else std::cout << "FAILED TO GET TRACK COVER (ScApi.cpp:HandleMetadata) (IGNORING)\n";
+			else FetchErr(r);
 		}
-		else std::cout << "NO COVER FOUND (ScApi.cpp:HandleMetadata) (IGNORING)\n";
+		else std::cout << "NO COVER FOUND (ScApi.cpp:HandleMetadata, IGNORING)\n";
 	}
 
 	file.save();
+}
+
+static bool DownloadM3U(const std::string& m3u, std::string& buffer)
+{
+	std::istringstream stream(m3u);
+	std::string line;
+
+	while (std::getline(stream, line))
+	{
+		if (line.starts_with("#EXTINF"))
+		{
+			std::getline(stream, line); // Skipping to next line, which is the URL
+
+			const cpr::Response r = cpr::Get(cpr::Url{ line });
+			if (RequestFail(r))
+			{
+				FetchErr(r);
+				return false;
+			}
+
+			buffer += r.text;
+		}
+	}
+
+	return true;
 }
 
 bool Track::DownloadTrack()
 {
 	// Requesting a download link
 
-	cpr::Response response = cpr::Get(cpr::Url{ UrlData });
-	if (response.status_code != 200)
+	cpr::Response r = cpr::Get(cpr::Url{ UrlData });
+	if (RequestFail(r))
 	{
-		std::cerr << "FAILED TO GET TRACK (ScApi.cpp:DownloadTrack A)\n";
+		FetchErr(r);
 		return false;
 	}
 
-	const std::string url = Json::parse(response.text)["url"];
+	const std::string url = Json::parse(r.text)["url"];
 
 	DBG_MSG("> STREAMING URL: " + url);
 
-	response = cpr::Get(cpr::Url{ url });
-	if (response.status_code != 200)
+	r = cpr::Get(cpr::Url{ url });
+	if (RequestFail(r))
 	{
-		std::cerr << "FAILED TO GET TRACK (ScApi.cpp:DownloadTrack B)\n";
+		FetchErr(r);
 		return false;
 	}
 
-	// Writing to output file
+	// Getting and sanitizing MP3 output path
 
-	std::string path;
-
-	if (cfg->fName.empty()) path = title;
-	else path = cfg->fName;
-
+	std::string path = cfg->fName.empty() ? title : cfg->fName;
 	path = std::regex_replace(path, std::regex("[<>:\"/\\|?*]"), "_");
 
 	if (!cfg->output.empty()) path.insert(0, cfg->output);
-
 	path += ".mp3";
+
+	// Downloading MP3(s) and writing output to disk
+
+	char* pFile = nullptr;
+	size_t size = 0;
+
+	std::string HlsMp3;
+
+	if (flags & Hls) // HLS downloads combine various segment files that make up one MP3
+	{
+		if (!DownloadM3U(r.text, HlsMp3)) return false;
+
+		pFile = HlsMp3.data();
+		size  = HlsMp3.size();
+	}
+	else
+	{
+		pFile = r.text.data();
+		size  = r.text.size();
+	}
 	
 	std::ofstream track(path, std::ios::binary | std::ios::trunc);
-	track.write(response.text.data(), response.text.size());
+	track.write(pFile, size);
 	track.close();
-
+	
 	// Handling metadata and MP3 tag
 
 	HandleMetadata(path);
@@ -256,19 +293,19 @@ bool Playlist::DownloadAlbum()
 
 	std::cout << "> ID RESOLUTION URL: " << url << '\n';
 
-	const cpr::Response response = cpr::Get(cpr::Url{ url });
+	const cpr::Response r = cpr::Get(cpr::Url{ url });
 
-	if (response.status_code != 200)
+	if (RequestFail(r))
 	{
-		std::cerr << "ERROR: PLAYLIST RESOLUTION FAILED - " << response.error.message << '\n';
+		FetchErr(r);
 		return false;
 	}
 
 	// Downloading each track
 
-	if (type == album && cfg->album.empty()) cfg->album = title;
+	if (type == tAlbum && cfg->album.empty()) cfg->album = title;
 
-	const Json tracks = Json::parse(response.text);
+	const Json tracks = Json::parse(r.text);
 
 	for (const auto& track : tracks)
 	{
@@ -284,7 +321,7 @@ bool Playlist::DownloadAlbum()
 		
 		if (!track.DownloadTrack())
 		{
-			if (track.fail) std::cerr << "ERROR: TRACK DOWNLOAD FAILED\n";
+			if (track.flags & Error) std::cerr << "ERROR: TRACK DOWNLOAD FAILED\n";
 			else std::cout << "ERROR: TRACK DOWNLOAD FAILED (ignoring)\n";
 		}
 	}

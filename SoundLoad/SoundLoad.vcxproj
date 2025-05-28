@@ -76,7 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\cpr;$(ProjectDir)include\taglib;$(ProjectDir)include\json</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\cpr;$(ProjectDir)include\taglib;$(ProjectDir)include\json;$(ProjectDir)include</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -96,7 +96,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\cpr;$(ProjectDir)include\taglib;$(ProjectDir)include\json</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\cpr;$(ProjectDir)include\taglib;$(ProjectDir)include\json;$(ProjectDir)include</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\cpr;$(ProjectDir)include\taglib;$(ProjectDir)include\json</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\cpr;$(ProjectDir)include\taglib;$(ProjectDir)include\json;$(ProjectDir)include</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -136,7 +136,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\cpr;$(ProjectDir)include\taglib;$(ProjectDir)include\json</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\cpr;$(ProjectDir)include\taglib;$(ProjectDir)include\json;$(ProjectDir)include</AdditionalIncludeDirectories>
       <PrecompiledHeaderFile>pch.hpp</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <PrecompiledHeader>Use</PrecompiledHeader>
