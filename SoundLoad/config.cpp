@@ -59,73 +59,40 @@ void Cfg::SetPathVar()
 	RegCloseKey(key);
 }
 
-void Cfg::ReadCfg(std::ifstream cfg)
+void Cfg::ReadCfg(const JsonCfg& cfg)
 {
-	Json data;
+	if (cfg.ran) flags |= WasRan;
 
-	try 
-	{ 
-		cfg >> data;
-		if (data["ran"]) flags |= WasRan;
-	}
-	catch (const std::exception& e) 
+	if (!cfg.cid.empty() && CID.empty())
 	{
-		cfg.close();
-		return;
-	}
-
-	cfg.close();
-
-	const JsonCfg CfgData = data.get<JsonCfg>();
-
-	if (!CfgData.cid.empty() && CID.empty())
-	{
-		CID = CfgData.cid;
+		CID = cfg.cid;
 		flags |= HasCID;
 	}
 
-	if (!CfgData.out.empty() && output.empty())
+	if (!cfg.out.empty() && output.empty())
 	{
-		output = CfgData.out;
+		output = cfg.out;
 		flags |= HasOut;
 	}
 	
-	if (!CfgData.img.empty() && cover.empty())
+	if (!cfg.img.empty() && cover.empty())
 	{
-		cover = CfgData.img;
+		cover = cfg.img;
 		flags |= HasImg;
 	}
 }
 
-void Cfg::SaveCfg(const std::string& path)
+void Cfg::SaveCfg(std::fstream& CfgFile, JsonCfg& cfg)
 {
-	Json data;
-	JsonCfg CfgData;
+	if (!cfg.ran) cfg.ran = true;
+	else flags |= WasRan;
 
-	std::ifstream InCfg(path);
+	if (!CID.empty()    && cfg.cid.empty()) cfg.cid = CID;
+	if (!output.empty() && cfg.out.empty()) cfg.out = output;
+	if (!cover.empty()  && cfg.img.empty()) cfg.img = cover;
 
-	try 
-	{
-		InCfg >> data;
-		CfgData = data.get<JsonCfg>();
-
-		if (!CfgData.ran) CfgData.ran = true;
-		else flags |= WasRan;
-	}
-	catch (const std::exception& e) {}
-
-	InCfg.close();
-
-	if (!CID.empty()    && CfgData.cid.empty()) CfgData.cid = CID;
-	if (!output.empty() && CfgData.out.empty()) CfgData.out = output;
-	if (!cover.empty()  && CfgData.img.empty()) CfgData.img = cover;
-
-	std::ofstream cfg(path);
-
-	if (cfg.is_open()) cfg << Json(CfgData).dump(4);
+	if (CfgFile.is_open()) CfgFile << Json(cfg).dump(4);
 	else std::cout << "ERROR: FAILED TO OPEN cfg.json FOR WRITING (ignoring)\n";
-
-	cfg.close();
 }
 
 void Cfg::ReadArgs(int argc, char* argv[])
@@ -228,18 +195,24 @@ Cfg::Cfg(int argc, char* argv[])
 	// Handling cfg.json
 
 	const std::string CfgPath = ExeDir + "cfg.json";
+	const bool CfgExists = std::filesystem::exists(CfgPath);
 
-	if (!std::filesystem::exists(CfgPath) && status & Save)
+	int OpenMode = std::ios::in | std::ios::out;
+	if (!CfgExists && status & Save) OpenMode |= std::ios::trunc;
+
+	std::fstream file(CfgPath, OpenMode);
+	JsonCfg CfgData;
+
+	if (CfgExists)
 	{
-		std::ofstream cfg(CfgPath);
-		cfg.close();
-
-		DBG_MSG("Created cfg.json");
+		Json json;
+		file >> json;
+		CfgData = json.get<JsonCfg>();
 	}
 
-	if (status & Save) SaveCfg(CfgPath);
+	if (status & Save) SaveCfg(file, CfgData);
 	
-	ReadCfg(std::ifstream(CfgPath));
+	if (CfgExists) ReadCfg(CfgData);
 
 	if (!(status & NoLink))
 	{

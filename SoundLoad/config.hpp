@@ -36,8 +36,8 @@ class Cfg
 	};
 
 	void SetPathVar();
-	void ReadCfg(std::ifstream cfg);
-	void SaveCfg(const std::string& path);
+	void ReadCfg(const JsonCfg& CfgData);
+	void SaveCfg(std::fstream& CfgFile, JsonCfg& cfg);
 	void ReadArgs(int argc, char* argv[]);
 
 	int flags = 0;
