@@ -21,7 +21,7 @@
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="config.cpp">
+    <ClCompile Include="cfg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ScApi.cpp">
@@ -32,7 +32,7 @@
     <ClInclude Include="pch.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="config.hpp">
+    <ClInclude Include="cfg.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ScApi.hpp">

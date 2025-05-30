@@ -1,8 +1,12 @@
 # SoundLoad
-The goal of this project is to help all SoundCloud users save their favorite songs with as much data as possible preserved. Spotify users also benefit from this, as they can effortlessly import a song to local files in seconds, where it would otherwise take several minutes if the song was downloaded and the metadata was all set manually.
+The goal of this project is to help all SoundCloud users save their favorite songs 
+with as much data as possible preserved. Spotify users also benefit from this, as 
+they can effortlessly import a song to local files in seconds, where it would otherwise 
+take several minutes if the song was downloaded and the metadata was all set manually.
 
 # Usage
-You must provide a client ID every use unless you save one to cfg.json. This can be done by using the ```-CID``` & ```-save``` arguments in conjunction.
+You must provide a client ID every use unless you save one to cfg.json. This can be done 
+by using the `-CID` & `-save` arguments in conjunction.
 
 ### Getting a new client ID
 - Open browser dev tools (ctrl+shift+i, usually)
@@ -12,30 +16,38 @@ You must provide a client ID every use unless you save one to cfg.json. This can
 - Find a request with a client ID in it
 
 ### Arguments (optional)
-- ```-CID     <client ID>```
-- ```-fName   <MP3 file name&>```
-- ```-title   <MP3 title property>```
-- ```-artists <MP3 contributing artists property>```
-- ```-artist  <MP3 album artist property>```
-- ```-album   <MP3 album property>```
-- ```-genre   <MP3 genre property>```
-- ```-year    <MP3 year property>```
-- ```-num     <MP3 # property>```
-- ```-out     <Output directory>```
-- ```-save    (save to cfg.json)```
-- ```-EnvVar  (add SoundLoad to PATH variables)```
+`-cid` – SoundCloud client ID (saveable)
+`-PVar` – Adds program to user PATH variables
+`-save` – Saves applicable args to cfg.json
+`-cFile` – Cover art file name
+`-cDst` – Cover art output directory (saveable)
+`-art` – Downloads cover art separately from MP3 (saveable)
+`--art` – Disables separate cover art download (saveable)
+`-aFile` – MP3 file name
+`-aDst` – MP3 output directory (saveable)
+`--audio` – Audio will not be downloaded (saveable)
+`-audio` – Reverses the effect of --audio (saveable)
+`-title` – MP3 title property
+`-comment` – MP3 comment property
+`-cArtist` – MP3 contributing artists property
+`-aArtist` – MP3 album artist property
+`-album` – MP3 album property
+`-genre` – MP3 genre property
+`-tNum` – MP3 track number property
+`-year` – MP3 year property
 
 ### Downloading a track/album/playlist
 - Put the SoundCloud link as the first argument
 - Optionally, add any combination of the arguments listed above
 - After running, the MP3(s) will be in the provided output directory, or if none was provided, in the executable directory
 
-
-## Tips
-- If you want to have more control over the MP3 metadata/name/path, you can use any combination of arguments listed above. If ```-save``` is used, all that will be saved (if provided) is the CID and output directory.
-- When first ran, or when the "ran" field of cfg.json is false, you will have the option to add the program to your PATH variables. Using the ```-EnvVar``` argument forces the program to do this.
+## Features
+- Downloads tracks at the highest available quality. Progressive transcodings are
+preferred, with HLS MPEG transcodings being used only if progressive isn't available.
+- Automatically scrapes metadata and fills out ID3v2 tags. This includes the cover art at the 
+highest quality.
 
 ## Notes
 - Non-ASCII characters are supported in every case except command line arguments. This is subject to change.
-- The following characters will be replaced with an underscore in file names: <, >, :, ", \, |, ?, *
-- As it stands, I have not added the ability to download Go+ songs, though when I do, you must have an account with Go+.
+- The following characters will be replaced with an underscore in file names: `< > : " \ | ? *`
+- Go+ songs cannot be downloaded.

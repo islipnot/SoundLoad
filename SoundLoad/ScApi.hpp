@@ -1,75 +1,68 @@
 #pragma once
-#include "config.hpp"
+#include "cfg.hpp"
+
+#define FetchErr(response) std::cerr << "REQUEST FAILED: " << response.url << " (" << response.error.message << " )\n" // Expects cpr::Response
+
+#define RequestFail(response) response.status_code != 200 // Expects cpr::Response
 
 #define ToUtf8(str) TagLib::String(str.c_str(), TagLib::String::UTF8)
 
-using Json = nlohmann::json;
-
 typedef class Track
 {
-	enum PostType
-	{
-		tTrack,
-		tAlbum,
-		tPlaylist
-	};
+	Config* cfg = nullptr;
+	bool hls = false;
+	int type = -1;
 
 	bool DownloadTrack();
-	bool DownloadAlbum(); // Also works for playlists
+	bool DownloadAlbum(); // Works for playlists
 	bool DownloadCover();
 
+	bool GetTrackIDs(const Json& json);
 	bool GetStreamingUrl(const Json& json);
-	bool GetTrackListIDs(const Json& json);
 
-	void HandleMetadata(std::string& TrackPath);
-
-	int type = tTrack;
-	Cfg* cfg = nullptr;
+	void AddTag(const std::string& path);
 
 public:
 
-	enum Flags
+	enum TrackFlags
 	{
-		Error = 0x01,
-		Hls   = 0x02
+		Error  = 1,
+		tTrack = 1 << 2, // Object represents a song
+		tAlbum = 1 << 3, // Object represents album
 	};
 
-	Track(std::string link, Cfg* pCfg);
+	// Metadata
+
+	std::string CoverUrl;  // artwork_url
+	std::string CreatedAt; // created_at
+	std::string description;
+	std::string genre;
+	int id = 0;
+	std::string artist; // publisher_metadata.artist
+	std::string tags;   // tag_list
+	std::string title;
+	std::string ArtistPfpUrl;
+
+	// Info
+
+	std::string UrlData; // If type == track, progressive/hls streaming URL. Else, track list ID resolution link.
+	int flags = 0;
+
+	// Methods
+
+	Track(std::string url, Config* cfg);
 
 	bool download()
 	{
-		if (type == tTrack) return DownloadTrack();
-		else if (cfg->status & Cfg::NoLink) return DownloadCover();
-		else return DownloadAlbum();
+		if (cfg->flags & Config::GetCover && !DownloadCover()) return false;
+
+		if (!(cfg->flags & Config::NoAudio))
+		{
+			if (type == tTrack) return DownloadTrack();
+			else return DownloadAlbum();
+		}
 	}
 
-	// SoundCloud post metadata
+	inline bool fail() { return flags & Error; }
 
-	std::string CoverUrl;    // URL to the track cover (artwork_url)
-	std::string CreatedAt;   // Track upload timestamp (created_at)
-	std::string description; // Track description
-	std::string genre;       // Track genre
-	int id = 0;              // Track ID - if 0, the object represents a playlist/album
-	std::string artist;      // Track artist (publisher_metadata.artist)
-	std::string tags;        // Track tags (tag_list)
-	std::string title;       // Track title
-	std::string ArtistPfp;   // Profile picture of the account that uploaded the track (used if no cover was added to track)
-
-	// Extra
-
-	std::string UrlData; // If type == track, this is a progressive/hls streaming URL. Otherwise, it's a track list ID resolution link.
-	int flags = 0;
-
-} Playlist, Album, PostData;
-
-/* SoundCloud and M3U's
-*
-* For every SoundCloud track, there are various transcodings,
-* most of them being HLS, with just one being progressive usually.
-* Progressive transcodings provide a complete MP3 that can be
-* downloaded with a single request, while HLS transcodings are
-* split into segments typically ranging from ~1.2-10 seconds.
-* Each of these segments is a complete MP3 file, and while
-* media players can simply play them sequentially, we must
-* download and concatenate them to create a single MP3 file.
-*/
+} Album, ScPost;
