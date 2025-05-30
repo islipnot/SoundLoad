@@ -16,25 +16,25 @@ by using the `-CID` & `-save` arguments in conjunction.
 - Find a request with a client ID in it
 
 ### Arguments (optional)
-`-cid` – SoundCloud client ID (saveable)
-`-PVar` – Adds program to user PATH variables
-`-save` – Saves applicable args to cfg.json
-`-cFile` – Cover art file name
-`-cDst` – Cover art output directory (saveable)
-`-art` – Downloads cover art separately from MP3 (saveable)
-`--art` – Disables separate cover art download (saveable)
-`-aFile` – MP3 file name
-`-aDst` – MP3 output directory (saveable)
-`--audio` – Audio will not be downloaded (saveable)
-`-audio` – Reverses the effect of --audio (saveable)
-`-title` – MP3 title property
-`-comment` – MP3 comment property
-`-cArtist` – MP3 contributing artists property
-`-aArtist` – MP3 album artist property
-`-album` – MP3 album property
-`-genre` – MP3 genre property
-`-tNum` – MP3 track number property
-`-year` – MP3 year property
+- `-cid` – SoundCloud client ID (saveable)
+- `-PVar` – Adds program to user PATH variables
+- `-save` – Saves applicable args to cfg.json
+- `-cFile` – Cover art file name
+- `-cDst` – Cover art output directory (saveable)
+- `-art` – Downloads cover art separately from MP3 (saveable)
+- `--art` – Disables separate cover art download (saveable)
+- `-aFile` – MP3 file name
+- `-aDst` – MP3 output directory (saveable)
+- `--audio` – Audio will not be downloaded (saveable)
+- `-audio` – Reverses the effect of --audio (saveable)
+- `-title` – MP3 title property
+- `-comment` – MP3 comment property
+- `-cArtist` – MP3 contributing artists property
+- `-aArtist` – MP3 album artist property
+- `-album` – MP3 album property
+- `-genre` – MP3 genre property
+- `-tNum` – MP3 track number property
+- `-year` – MP3 year property
 
 ### Downloading a track/album/playlist
 - Put the SoundCloud link as the first argument
