@@ -17,6 +17,7 @@
 *
 * -cFile > Cover art file name
 * -cDst  > Cover art output directory (saveable)
+* -cSrc  > Cover art source (path, sc link, img link)
 * -art   > Downloads cover art seperately from MP3 (saveable)
 * --art  > Opposite of "-art" (saveable)
 *
@@ -46,7 +47,7 @@ struct CfgFormat
 	std::string cid;
 	std::string ArtDst;
 	std::string TrackDst;
-	int GetArt = -1;
+	int GetArt   = -1;
 	int GetTrack = -1;
 };
 
@@ -58,15 +59,18 @@ struct Config
 
 	enum CfgFlags
 	{
-		Error    = 1,      // Error occured within a member function
-		SkipCfg  = 1 << 1, // Does not read from cfg.json (besides CID)
-		SaveCfg  = 1 << 2, // Save applicable arguments to cfg.json (-save)
-		ClearCfg = 1 << 3, // Set all data in cfg.json to the default values (-clear)
-		GetCover = 1 << 4, // Downloads cover art seperate from MP3 metadata (-art)
-		NoCover  = 1 << 5, // Reverses the effect of GetCover when saved to cfg (--art)
-		NoAudio  = 1 << 6, // Does not download audio from the track link (--audio)
-		GetAudio = 1 << 7, // Reverses the effect of NoAudio when saved to cfg (-audio)
-		AddPVar  = 1 << 8, // Adds program to user PATH variables
+		Error    = 1,       // Error occured within a member function
+		SkipCfg  = 1 << 1,  // Does not read from cfg.json (besides CID)
+		SaveCfg  = 1 << 2,  // Save applicable arguments to cfg.json (-save)
+		ClearCfg = 1 << 3,  // Set all data in cfg.json to the default values (-clear)
+		GetCover = 1 << 4,  // Downloads cover art seperate from MP3 metadata (-art)
+		NoCover  = 1 << 5,  // Reverses the effect of GetCover when saved to cfg (--art)
+		NoAudio  = 1 << 6,  // Does not download audio from the track link (--audio)
+		GetAudio = 1 << 7,  // Reverses the effect of NoAudio when saved to cfg (-audio)
+		AddPVar  = 1 << 8,  // Adds program to user PATH variables
+		tPath    = 1 << 9,  // CoverSrc is an image path
+		tScLink  = 1 << 10, // CoverSrc is a SoundCloud link
+		tImgLink = 1 << 11, // CoverSrc is an image link
 
 		NoLink = NoAudio | NoCover
 	};

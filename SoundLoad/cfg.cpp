@@ -76,11 +76,11 @@ bool Config::save(CfgFormat& cfg, const std::wstring& path)
 
 void Config::read(Json& JsonCfg, CfgFormat& cfg, bool CidOnly)
 {
-	cfg.cid      = JsonCfg.value("cid", std::string{});
-	cfg.ArtDst   = JsonCfg.value("ArtDst", std::string{});
+	cfg.cid      = JsonCfg.value("cid",      std::string{});
+	cfg.ArtDst   = JsonCfg.value("ArtDst",   std::string{});
 	cfg.TrackDst = JsonCfg.value("TrackDst", std::string{});
 	cfg.GetTrack = JsonCfg.value("GetTrack", -1);
-	cfg.GetArt   = JsonCfg.value("GetArt", -1);
+	cfg.GetArt   = JsonCfg.value("GetArt",   -1);
 
 	if (cid.empty()) cid = cfg.cid;
 
@@ -117,6 +117,7 @@ Config::Config(int argc, char* argv[])
 		{ "cid",     [&](const std::string& v) { if (!v.empty()) cid       = v; } },
 		{ "cfile",   [&](const std::string& v) { if (!v.empty()) CoverName = v; } },
 		{ "cdst",    [&](const std::string& v) { if (!v.empty()) CoverDst  = v; } },
+		{ "csrc",    [&](const std::string& v) { if (!v.empty()) CoverSrc  = v; } },
 		{ "afile",   [&](const std::string& v) { if (!v.empty()) TrackName = v; } },
 		{ "adst",    [&](const std::string& v) { if (!v.empty()) TrackDst  = v; } },
 		{ "title",   [&](const std::string& v) { if (!v.empty()) title     = v; } },
@@ -163,6 +164,21 @@ Config::Config(int argc, char* argv[])
 		std::string v;
 		if (i + 1 < argc) v = argv[i + 1];
 		it->second(v);
+	}
+
+	// Checking CoverSrc
+
+	if (!CoverSrc.empty())
+	{
+		// This is not fool proof, some invalid links may pass this check
+
+		if (std::filesystem::exists(CoverSrc)) flags |= tPath;
+		else
+		{
+			std::transform(CoverSrc.begin(), CoverSrc.end(), CoverSrc.begin(), ::tolower);
+			if (CoverSrc.starts_with("https://soundcloud.com/")) flags |= tScLink;
+			else flags |= tImgLink;
+		}
 	}
 
 	// Getting directory of SoundLoad.exe

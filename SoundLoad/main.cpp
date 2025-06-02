@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    // Validating config and handling blank members
+    // Finishing config initialization
 
     if (!(flags & (Config::NoAudio | Config::NoCover)))
     {
@@ -75,8 +75,8 @@ int main(int argc, char* argv[])
     std::replace(TrackDst.begin(), TrackDst.end(), '\\', '/');
     std::replace(CoverDst.begin(), CoverDst.end(), '\\', '/');
 
-    if (TrackDst.back() != '/') TrackDst.push_back('/');
-    if (CoverDst.back() != '/') CoverDst.push_back('/');
+    if (!TrackDst.empty() && TrackDst.back() != '/') TrackDst.push_back('/');
+    if (!CoverDst.empty() && CoverDst.back() != '/') CoverDst.push_back('/');
 
     // Downloading track/cover
 

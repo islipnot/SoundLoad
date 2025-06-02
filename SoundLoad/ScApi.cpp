@@ -6,6 +6,8 @@ using Json = nlohmann::json;
 
 static bool DownloadM3U(const std::string& m3u, std::string& buffer)
 {
+	// Parse M3U -> download MP3 segments -> concat
+
 	std::istringstream stream(m3u);
 	std::string line;
 
@@ -27,6 +29,68 @@ static bool DownloadM3U(const std::string& m3u, std::string& buffer)
 	}
 
 	return true;
+}
+
+void Track::HandleTagArt(TagLib::ID3v2::Tag* tag)
+{
+	std::string& CoverSrc = cfg->CoverSrc;
+
+	if (CoverSrc.empty())
+	{
+		if (!CoverUrl.empty()) CoverSrc = CoverUrl;
+		else if (!ArtistPfpUrl.empty()) CoverSrc = ArtistPfpUrl;
+	}
+	if (CoverSrc.empty())
+	{
+		std::cout << "ERROR: FAILED TO FIND COVER SOURCE (ignoring)\n";
+		return;
+	}
+
+	std::cout << "Artwork source: " << CoverSrc << "\n\n";
+
+	const int CfgFlags = cfg->flags;
+	auto cover = new TagLib::ID3v2::AttachedPictureFrame;
+
+	if (CfgFlags & Config::tPath)
+	{
+		std::ifstream ArtFile(CoverSrc, std::ios::binary);
+		if (ArtFile.fail())
+		{
+			std::cout << "ERROR: Failed to open cover art file (ignoring)\n";
+			return;
+		}
+
+		const size_t sz = std::filesystem::file_size(CoverSrc);
+		std::vector<char> buffer(sz);
+
+		ArtFile.read(buffer.data(), sz);
+		ArtFile.close();
+
+		cover->setPicture(TagLib::ByteVector(buffer.data(), sz));
+	}
+	else
+	{
+		if (CfgFlags & Config::tScLink)
+		{
+			const Track ArtTrack(CoverSrc, cfg, true);
+			if (ArtTrack.CoverUrl.empty())
+			{
+				std::cout << "ERROR: FAILED TO FETCH ART FROM SOURCE (ignoring)\n";
+				return;
+			}
+
+			CoverSrc = ArtTrack.CoverUrl;
+		}
+
+		if (!(CfgFlags & Config::tImgLink)) CoverSrc = std::regex_replace(CoverSrc, std::regex("-large."), "-original.");
+
+		const cpr::Response r = cpr::Get(cpr::Url{ CoverSrc });
+
+		if (RequestFail(r)) FetchErr(r);
+		else cover->setPicture(TagLib::ByteVector(r.text.data(), static_cast<UINT>(r.text.size())));
+	}
+
+	tag->addFrame(cover);
 }
 
 void Track::AddTag(const std::string& path)
@@ -52,39 +116,28 @@ void Track::AddTag(const std::string& path)
 
 	// Comments
 
-	value = "Release date: " + CreatedAt + "\n\nsaved with https://github.com/islipnot/SoundLoad";
-	if (!description.empty()) value.insert(0, description + "\n\n");
+	value = "Release date: " + CreatedAt + "\n\nSaved with https://github.com/islipnot/SoundLoad";
+	if (!description.empty()) value.insert(0, "Description: \"" + description + "\"\n\n");
 
 	tag->setComment(ToUtf8(value));
 
-	// Genre/track/year
+	// Genre
 
 	if (!cfg->genre.empty()) tag->setGenre(ToUtf8(cfg->genre));
 	else if (!genre.empty()) tag->setGenre(ToUtf8(genre));
 
+	// Track number
+
 	if (cfg->tNum != -1) tag->setTrack(cfg->tNum);
+
+	// Year
+
 	if (cfg->year != -1) tag->setYear(cfg->year);
+	else tag->setYear(std::stoi(CreatedAt.substr(0, 4)));
 
 	// MP3 cover
 
-	const bool NoUrl = CoverUrl.empty();
-
-	if (!NoUrl || !ArtistPfpUrl.empty())
-	{
-		value = std::regex_replace(NoUrl ? ArtistPfpUrl : CoverUrl, std::regex("-large."), "-original.");
-		cpr::Response r = cpr::Get(cpr::Url{ value });
-
-		if (!RequestFail(r))
-		{
-			std::cout << "Artwork URL: " << value << "\n\n";
-
-			auto cover = new TagLib::ID3v2::AttachedPictureFrame;
-			cover->setPicture(TagLib::ByteVector(r.text.data(), static_cast<UINT>(r.text.size())));
-			tag->addFrame(cover);
-		}
-		else FetchErr(r);
-	}
-	else std::cout << "NO COVER FOUND (ScApi.cpp:HandleMetadata, IGNORING)\n";
+	HandleTagArt(tag);
 
 	file.save();
 }
@@ -227,14 +280,13 @@ bool Album::DownloadAlbum()
 
 	// Downloading each track
 
-	std::cout << "ID resolution URL: " << url << '\n';
+	std::cout << "ID resolution URL: " << url << "\n\n";
 
 	const Json tracks = Json::parse(r.text);
 
-	for (const auto& track : tracks)
+	for (int i = tracks.size(); i; --i)
 	{
-		const char* permalink = track.value("permalink_url", nullptr);
-
+		const char* permalink = tracks[i].value("permalink_url", nullptr);
 		if (!permalink)
 		{
 			std::cout << "ERROR: 'permalink_url' IS NULL (ignoring track)\n";
@@ -242,12 +294,9 @@ bool Album::DownloadAlbum()
 		}
 
 		Track track(permalink, cfg);
+		track.cfg->tNum = i;
 
-		if (!track.DownloadTrack())
-		{
-			if (track.fail()) std::cerr << "ERROR: TRACK DOWNLOAD FAILED\n";
-			else std::cout << "ERROR: TRACK DOWNLOAD FAILED (ignoring)\n";
-		}
+		if (!track.DownloadTrack()) std::cout << "ERROR: FAILED TO DOWNLOAD TRACK (ignoring)\n";
 	}
 
 	return true;
@@ -277,7 +326,7 @@ bool ScPost::DownloadCover()
 	return true;
 }
 
-Track::Track(std::string url, Config* pCfg)
+Track::Track(std::string url, Config* pCfg, bool CoverOnly)
 {
 	cfg = pCfg;
 
@@ -305,8 +354,8 @@ Track::Track(std::string url, Config* pCfg)
 	const Json json = Json::parse(r.text);
 
 	constexpr auto ArtUrl = "artwork_url";
-	constexpr auto large = "-large.";
-	constexpr auto og = "-original.";
+	constexpr auto large  = "-large.";
+	constexpr auto og     = "-original.";
 
 	if (json[ArtUrl].is_null())
 	{
@@ -315,14 +364,16 @@ Track::Track(std::string url, Config* pCfg)
 	}
 	else CoverUrl = std::regex_replace(json[ArtUrl].get<std::string>(), std::regex(large), og);
 
+	if (CoverOnly) return;
+
 	title = json.value("title", std::string{});
 
 	if (cfg->flags & Config::NoAudio) return;
 
-	CreatedAt = json.value("created_at", std::string{});
+	CreatedAt   = json.value("created_at",  std::string{});
 	description = json.value("description", std::string{});
-	genre = json.value("genre", std::string{});
-	tags = json.value("tag_list", std::string{});
+	genre       = json.value("genre",       std::string{});
+	tags        = json.value("tag_list",    std::string{});
 
 	constexpr auto kind = "kind";
 	constexpr auto publisher_metadata = "publisher_metadata";

@@ -21,6 +21,7 @@ by using the `-CID` & `-save` arguments in conjunction.
 - `-save` – Saves applicable args to cfg.json
 - `-cFile` – Cover art file name
 - `-cDst` – Cover art output directory (saveable)
+- `-cSrc` - Cover art source (path, sc link, img link)
 - `-art` – Downloads cover art separately from MP3 (saveable)
 - `--art` – Disables separate cover art download (saveable)
 - `-aFile` – MP3 file name

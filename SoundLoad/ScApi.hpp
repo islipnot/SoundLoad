@@ -21,6 +21,7 @@ typedef class Track
 	bool GetStreamingUrl(const Json& json);
 
 	void AddTag(const std::string& path);
+	void HandleTagArt(TagLib::ID3v2::Tag* tag);
 
 public:
 
@@ -50,7 +51,7 @@ public:
 
 	// Methods
 
-	Track(std::string url, Config* cfg);
+	Track(std::string url, Config* cfg, bool CoverOnly = false);
 
 	bool download()
 	{
