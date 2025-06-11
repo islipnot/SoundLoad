@@ -5,8 +5,8 @@ they can effortlessly import a song to local files in seconds, where it would ot
 take several minutes if the song was downloaded and the metadata was all set manually.
 
 ## Usage
-A SoundCloud client ID is required for every use unless saved to `cfg.json`.  
-Use the `-CID` and `-save` arguments together to store one.
+A SoundCloud client ID is required for every use unless saved to `cfg.json`.
+</br> ( <i>Use `-CID` & `-save` to store a CID</i> )
 
 ### Getting a new client ID
 - Open browser dev tools (`ctrl+shift+i`)
@@ -44,9 +44,8 @@ Use the `-CID` and `-save` arguments together to store one.
 ## Examples
 
 ### Setting basic config info
-By running this, the client ID, MP3 output dir, and cover art output dir will be saved to cfg.json. Note that 
-cover art wont actually be seperately downloaded yet because the `-art` flag was not saved. Config modifications 
-can be done in conjunction with any other arguments, but this example is here for simplicity.
+By running this, the client ID, MP3 output dir, and cover art output dir will be saved to cfg.json. Note that creating
+a local files folder for spotify like shown in this example makes importing songs to spotify extremely quick.
 ```
 c:>soundload -cid cWww6yL0wMOcwhn4GEYjHVAg3mwMPBis -adst "c:/spotify local files" -cdst "c:/cover art" -save
 ```
@@ -69,14 +68,14 @@ c:>soundload https://soundcloud.com/axxturel/sets/s-kkkult-s-kkkult-s-kkkkult
 By using the `-art` arg, you tell the program to seperately download the cover art from the track. It 
 should be noted that this option can be saved to cfg.json. This is useful for anyone archiving 
 underground music, where cover art is often changed or lost to time. The `--audio` arg is also used 
-and saved, preventing an MP3 from being downloaded
+and saved, preventing an MP3 from being downloaded.
 ```
-c:>soundload https://soundcloud.com/hexxarchive_4/pint-x-4jay-fuck12-prod-mexikodro --audio -art -cdst "c:/cover art" -save
+c:>soundload https://soundcloud.com/hexxarchive_4/pint-x-4jay-fuck12-prod-mexikodro --audio -art -save
 
 c:>soundload https://soundcloud.com/ebkyoungjoc-sc/need-love
 ```
 
 ## Notes
-- Non-ASCII characters are supported in every case except command line arguments. This is subject to change.
+- Unicode characters such as emojis are not handled on command line
 - The following characters will be replaced with an underscore in file names: `< > : " \ | ? *`
 - Go+ songs cannot be downloaded.

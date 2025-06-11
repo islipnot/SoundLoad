@@ -45,10 +45,10 @@ using Json = nlohmann::json;
 struct CfgFormat
 {
 	std::string cid;
-	std::string ArtDst;
-	std::string TrackDst;
-	int GetArt   = -1;
-	int GetTrack = -1;
+	std::string ArtDst;   // Defaults to Config::ExeDir
+	std::string TrackDst; // Defaults to Config::ExeDir
+	char GetArt   = -1;   // Defaults to 0
+	char GetTrack = -1;   // Defaults to 1
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CfgFormat, cid, ArtDst, TrackDst, GetArt, GetTrack)
@@ -104,7 +104,7 @@ struct Config
 
 	void AddPathVar();
 
-	bool save(CfgFormat& cfg, const std::wstring& path);
+	void save(CfgFormat& cfg, const std::wstring& path);
 
 	void read(Json& JsonCfg, CfgFormat& cfg, bool CidOnly);
 

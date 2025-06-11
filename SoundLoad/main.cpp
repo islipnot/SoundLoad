@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
 
     if ((flags & Config::NoLink) == Config::NoLink)
     {
-        std::cout << "[!] INPUT HANDLED!\n";
+        std::cout << "\n[!] INPUT HANDLED\n";
         return 0;
     }
 
@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
     {
         if (cfg.cid.empty())
         {
-            std::cerr << "ERROR: NO CLIENT ID\n";
+            std::cerr << "ERROR: no client ID\n";
             return 1;
         }
 
@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
     ScPost post(argv[1], &cfg);
     if (post.fail() || !post.download()) return 1;
 
-    std::cout << "[!] DOWNLOAD COMPLETE!\n";
+    std::cout << "\n[!] DOWNLOAD COMPLETE\n";
 
     return 0;
 }

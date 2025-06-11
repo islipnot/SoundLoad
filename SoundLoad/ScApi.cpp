@@ -42,11 +42,11 @@ void Track::HandleTagArt(TagLib::ID3v2::Tag* tag)
 	}
 	if (CoverSrc.empty())
 	{
-		std::cout << "ERROR: FAILED TO FIND COVER SOURCE (ignoring)\n";
+		std::cout << "WARNING: no art source found\n";
 		return;
 	}
 
-	std::cout << "Artwork source: " << CoverSrc << "\n\n";
+	std::cout << "\nArt source: " << CoverSrc << '\n';
 
 	const int CfgFlags = cfg->flags;
 	auto cover = new TagLib::ID3v2::AttachedPictureFrame;
@@ -56,7 +56,7 @@ void Track::HandleTagArt(TagLib::ID3v2::Tag* tag)
 		std::ifstream ArtFile(CoverSrc, std::ios::binary);
 		if (ArtFile.fail())
 		{
-			std::cout << "ERROR: Failed to open cover art file (ignoring)\n";
+			std::cout << "WARNING: Failed to open cover art file\n";
 			return;
 		}
 
@@ -75,7 +75,7 @@ void Track::HandleTagArt(TagLib::ID3v2::Tag* tag)
 			const Track ArtTrack(CoverSrc, cfg, true);
 			if (ArtTrack.CoverUrl.empty())
 			{
-				std::cout << "ERROR: FAILED TO FETCH ART FROM SOURCE (ignoring)\n";
+				std::cout << "WARNING: failed to get art from source\n";
 				return;
 			}
 
@@ -144,7 +144,7 @@ void Track::AddTag(const std::string& path)
 
 bool Album::GetTrackIDs(const Json& json)
 {
-	constexpr auto tracks = "tracks";
+	constexpr const char* tracks = "tracks";
 
 	if (!json.contains(tracks))
 	{
@@ -172,13 +172,13 @@ bool Track::GetStreamingUrl(const Json& json)
 
 	if (!json.contains(media))
 	{
-		std::cerr << "ERROR: media property not found\n";
+		std::cerr << "ERROR: 'media' property not found\n";
 		return false;
 	}
 
 	if (!json[media].contains(transcodings))
 	{
-		std::cerr << "ERROR: transcodings property not found\n";
+		std::cerr << "ERROR: 'transcodings' property not found\n";
 		return false;
 	}
 
@@ -201,11 +201,11 @@ bool Track::GetStreamingUrl(const Json& json)
 
 	if (!FoundLink)
 	{
-		std::cerr << "ERROR: NO MEDIA TRANSCODING URL FOUND\n";
+		std::cerr << "ERROR: no valid transcodings located\n";
 		return false;
 	}
 
-	std::cout << "Streaming URL: " << UrlData << "\n\n";
+	std::cout << "\nTranscoding URL: " << UrlData << '\n';
 	return true;
 }
 
@@ -227,7 +227,7 @@ bool Track::DownloadTrack()
 		return false;
 	}
 
-	std::cout << "Streaming URL: " << url << "\n\n";
+	std::cout << "\nStreaming URL: " << url << '\n';
 
 	// Sanitizing MP3 output path
 
@@ -278,7 +278,7 @@ bool Album::DownloadAlbum()
 
 	// Downloading each track
 
-	std::cout << "ID resolution URL: " << UrlData << "\n\n";
+	std::cout << "\nID resolution URL: " << UrlData << '\n';
 
 	const Json tracks = Json::parse(r.text);
 
@@ -287,14 +287,14 @@ bool Album::DownloadAlbum()
 		std::string permalink = tracks[i].value("permalink_url", std::string{});
 		if (permalink.empty())
 		{
-			std::cout << "ERROR: 'permalink_url' IS NULL (ignoring track)\n";
+			std::cout << "WARNING: permalink_url IS NULL (skipping track)\n";
 			continue;
 		}
 
 		Track track(permalink, cfg);
 		track.cfg->tNum = i;
 
-		if (!track.DownloadTrack()) std::cout << "ERROR: FAILED TO DOWNLOAD TRACK (ignoring)\n";
+		if (!track.DownloadTrack()) std::cout << "WARNING: failed to download track (skipping)\n";
 	}
 
 	return true;
@@ -309,7 +309,7 @@ bool ScPost::DownloadCover()
 		return false;
 	}
 
-	std::cout << "Artwork URL: " << CoverUrl << "\n\n";
+	std::cout << "\nArtwork URL: " << CoverUrl << '\n';
 
 	std::string path = cfg->CoverName.empty() ? title : cfg->CoverName;
 	path = std::regex_replace(path, std::regex("[<>:\"/\\|?*]"), "_");
@@ -345,7 +345,7 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly)
 		return;
 	}
 
-	std::cout << "Resolution URL: " << ResUrl << "\n\n";
+	std::cout << "\nResolution URL: " << ResUrl << '\n';
 
 	// Setting member var values
 
@@ -391,7 +391,7 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly)
 		else type = tAlbum;
 	}
 
-	if (json.contains(publisher)) artist = json[publisher].value("artist", std::string{});
+	if (json.contains(publisher) && !json[publisher].is_null()) artist = json[publisher].value("artist", std::string{});
 	else artist = json["user"]["username"].get<std::string>(); // using get() instead of value() cuz this will never be null
 
 	if (type == tTrack)

@@ -49,7 +49,7 @@ void Config::AddPathVar()
 	RegCloseKey(key);
 }
 
-bool Config::save(CfgFormat& cfg, const std::wstring& path)
+void Config::save(CfgFormat& cfg, const std::wstring& path)
 {
 	if (cfg.cid.empty() && !cid.empty()) cfg.cid = cid;
 	if (cfg.ArtDst.empty() && !CoverDst.empty()) cfg.ArtDst = CoverDst;
@@ -69,8 +69,6 @@ bool Config::save(CfgFormat& cfg, const std::wstring& path)
 	std::ofstream CfgFile(path, std::ios::out | std::ios::trunc);
 	CfgFile << Json(cfg).dump(4);
 	CfgFile.close();
-
-	return true;
 }
 
 void Config::read(Json& JsonCfg, CfgFormat& cfg, bool CidOnly)
@@ -78,8 +76,8 @@ void Config::read(Json& JsonCfg, CfgFormat& cfg, bool CidOnly)
 	cfg.cid      = JsonCfg.value("cid",      std::string{});
 	cfg.ArtDst   = JsonCfg.value("ArtDst",   std::string{});
 	cfg.TrackDst = JsonCfg.value("TrackDst", std::string{});
-	cfg.GetTrack = JsonCfg.value("GetTrack", -1);
-	cfg.GetArt   = JsonCfg.value("GetArt",   -1);
+	cfg.GetTrack = JsonCfg.value("GetTrack", 1);
+	cfg.GetArt   = JsonCfg.value("GetArt",   0);
 
 	if (cid.empty()) cid = cfg.cid;
 
@@ -90,13 +88,13 @@ void Config::read(Json& JsonCfg, CfgFormat& cfg, bool CidOnly)
 
 	if (!(flags & (GetAudio | NoAudio)) && cfg.GetTrack != -1)
 	{
-		if (cfg.GetTrack == 0) flags |= NoAudio;
+		if (cfg.GetTrack == false) flags |= NoAudio;
 		else flags |= GetAudio;
 	}
 
 	if (!(flags & (GetCover | NoCover)) && cfg.GetArt != -1)
 	{
-		if (cfg.GetArt == 0) flags |= NoCover;
+		if (cfg.GetArt == false) flags |= NoCover;
 		else flags |= GetCover;
 	}
 }
@@ -155,7 +153,7 @@ Config::Config(int argc, char* argv[])
 
 		if (it == map.end())
 		{
-			std::cerr << "ERROR: INVALID ARGUMENT(s)\n";
+			std::cerr << "ERROR: invalid argument(s)\n";
 			flags |= Error;
 			return;
 		}
@@ -186,7 +184,7 @@ Config::Config(int argc, char* argv[])
 
 	if (!GetModuleFileName(nullptr, ExeDir.data(), MAX_PATH))
 	{
-		std::cerr << "ERROR: FAILED TO GET EXE DIR (" << GetLastError() << ")\n";
+		std::cerr << "ERROR: failed to get ExeDir\n";
 		flags |= Error;
 		return;
 	}
