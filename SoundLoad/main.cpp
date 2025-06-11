@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
     std::wstring CfgPath = cfg.ExeDir + L"cfg.json";
     const bool CfgExists = std::filesystem::exists(CfgPath);
 
-    if (cfg.flags & Config::AddPVar || (!CfgExists && MessageBox(nullptr, L"Add SoundLoad to user PATH variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES))
+    if (cfg.flags & Config::AddPVar || !CfgExists)
     {
         cfg.AddPathVar();
     }
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
 
     if ((flags & Config::NoLink) == Config::NoLink)
     {
-        std::cout << "[!] DATA HANDLED!\n";
+        std::cout << "[!] INPUT HANDLED!\n";
         return 0;
     }
 

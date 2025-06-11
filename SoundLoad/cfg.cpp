@@ -7,46 +7,45 @@ void Config::AddPathVar()
 {
 	HKEY key = nullptr;
 
-	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Environment", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &key) != ERROR_SUCCESS || !key)
+	if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Environment", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &key) != ERROR_SUCCESS)
 	{
-		std::cout << "ERROR: FAILED TO OPEN HKEY_CURRENT_USER\\Environment (ignoring)\n";
+		std::cout << "WARNING: FAILED TO OPEN HKEY_CURRENT_USER\\Environment\n";
 		return;
 	}
 
 	constexpr PCWSTR ValName = L"Path";
 	DWORD ValSz = 0;
 
-	if (RegQueryValueEx(key, ValName, nullptr, nullptr, nullptr, &ValSz) == ERROR_SUCCESS)
+	if (RegQueryValueExW(key, ValName, nullptr, nullptr, nullptr, &ValSz) == ERROR_SUCCESS)
 	{
 		std::wstring value(ValSz / sizeof(WCHAR), 0);
-		DWORD NewSz = value.size() * sizeof(WCHAR);
 
-		if (RegQueryValueEx(key, ValName, nullptr, nullptr, reinterpret_cast<BYTE*>(value.data()), &NewSz) == ERROR_SUCCESS)
+		if (RegQueryValueExW(key, ValName, nullptr, nullptr, reinterpret_cast<BYTE*>(value.data()), &ValSz) == ERROR_SUCCESS)
 		{
 			value.pop_back(); // removing null terminator
 			if (value.back() != L';') value.push_back(L';');
 
-			std::transform(value.begin(), value.end(), value.begin(), ::tolower);
+			std::transform(value.begin(),  value.end(),  value.begin(),  ::tolower);
 			std::transform(ExeDir.begin(), ExeDir.end(), ExeDir.begin(), ::tolower);
 
-			if (value.find(ExeDir) != std::wstring::npos)
+			if (value.find(ExeDir) == std::wstring::npos)
 			{
-				std::cout << "SoundLoad already exists in environment variables!\n";
-				RegCloseKey(key);
-				return;
-			}
-			else value += ExeDir;
+				value += ExeDir;
 
-			if (RegSetValueEx(key, ValName, 0, REG_EXPAND_SZ, reinterpret_cast<BYTE*>(value.data()), value.size() * sizeof(WCHAR)) == ERROR_SUCCESS)
-			{
-				std::cout << "Added SoundLoad to environment variables!\n";
-				RegCloseKey(key);
-				return;
+				if (flags & AddPVar || MessageBox(nullptr, L"Add SoundLoad to user PATH variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES)
+				{
+					if (RegSetValueExW(key, ValName, 0, REG_EXPAND_SZ, reinterpret_cast<BYTE*>(value.data()), value.size() * sizeof(WCHAR)) == ERROR_SUCCESS)
+					{
+						std::cout << "Added SoundLoad to environment variables!\n";
+					}
+					else std::cout << "WARNING: failed to set PATH value\n";
+				}
 			}
 		}
+		else std::cout << "WARNING: failed to query PATH value\n";
 	}
-
-	std::cout << "ERROR: FAILED TO ADD SOUNDLOAD TO ENVIRONMENT VARIABLES (ignoring)\n";
+	else std::cout << "WARNING: failed to query PATH size\n";
+	
 	RegCloseKey(key);
 }
 
@@ -132,7 +131,7 @@ Config::Config(int argc, char* argv[])
 
 	// Parsing args
 
-	if (std::tolower(argv[1][0]) != 'h')
+	if (argc > 1 && std::tolower(argv[1][0]) != 'h')
 	{
 		flags |= (NoAudio | NoCover);
 	}
