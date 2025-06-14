@@ -13,6 +13,8 @@ typedef class Track
 	bool hls = false;
 	int type = -1;
 
+	std::vector<int> ids; // for albums/playlists with over 50 songs (the limit per request)
+
 	bool DownloadTrack();
 	bool DownloadAlbum(); // Works for playlists
 	bool DownloadCover();
@@ -28,8 +30,8 @@ public:
 	enum TrackFlags
 	{
 		Error  = 1,
-		tTrack = 1 << 2, // Object represents a song
-		tAlbum = 1 << 3, // Object represents album
+		tTrack = 1 << 1, // Object represents a song
+		tAlbum = 1 << 2, // Object represents album/playlist
 	};
 
 	// Metadata

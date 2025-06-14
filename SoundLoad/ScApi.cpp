@@ -152,15 +152,12 @@ bool Album::GetTrackIDs(const Json& json)
 		return false;
 	}
 
-	UrlData = "https://api-v2.soundcloud.com/tracks?ids=";
+	const auto* track = &json[tracks][0];
 
-	for (const auto& track : json[tracks])
+	for (int i = json[tracks].size() - 1; i; --i, ++track)
 	{
-		UrlData += std::to_string(track.value("id", 0)) + ',';
+		ids.push_back(track->value("id", 0));
 	}
-
-	UrlData.pop_back(); // removing final comma
-	UrlData += "&client_id=" + cfg->cid;
 
 	return true;
 }
@@ -267,34 +264,71 @@ bool Track::DownloadTrack()
 
 bool Album::DownloadAlbum()
 {
-	// Requesting an array of resolved tracks from album
+	UrlData = "https://api-v2.soundcloud.com/tracks?ids=";
+	const std::string CidSegment = "&client_id=" + cfg->cid;
 
-	const cpr::Response r = cpr::Get(cpr::Url{ UrlData });
-	if (RequestFail(r))
+	// When creating a track ID resolution request, the max amount
+	// of track ID's allowed is 50
+
+	int TrackIndex = 1;
+	const bool NoCoverSrc = cfg->CoverSrc.empty();
+
+	for (size_t segment = ids.size() / 50; segment; --segment)
 	{
-		FetchErr(r);
-		return false;
-	}
+		const size_t sz = segment > 0 ? 50 : ids.size();
 
-	// Downloading each track
-
-	std::cout << "\nID resolution URL: " << UrlData << '\n';
-
-	const Json tracks = Json::parse(r.text);
-
-	for (int i = tracks.size() - 1; i >= 0; --i)
-	{
-		std::string permalink = tracks[i].value("permalink_url", std::string{});
-		if (permalink.empty())
+		for (size_t i = sz; i > 0; --i)
 		{
-			std::cout << "WARNING: permalink_url IS NULL (skipping track)\n";
-			continue;
+			UrlData += std::to_string(ids[i]) + ',';
 		}
 
-		Track track(permalink, cfg);
-		track.cfg->tNum = i;
+		ids.erase(ids.begin(), ids.begin() + sz);
 
-		if (!track.DownloadTrack()) std::cout << "WARNING: failed to download track (skipping)\n";
+		UrlData.pop_back(); // removing final comma
+		UrlData += CidSegment;
+
+		// Requesting an array of resolved tracks from album
+
+		const cpr::Response r = cpr::Get(cpr::Url{ UrlData });
+		if (RequestFail(r))
+		{
+			FetchErr(r);
+			return false;
+		}
+
+		std::cout << "\nResolution URL: " << UrlData << '\n';
+
+		// Downloading tracks
+
+		const Json tracks = Json::parse(r.text);
+
+		for (int i = tracks.size() - 1; i >= 0; --i)
+		{
+			const std::string permalink = tracks[i].value("permalink_url", std::string{});
+			if (permalink.empty())
+			{
+				std::cout << "WARNING: 'permalink_url' is null (skipping track)\n";
+				continue;
+			}
+
+			Track track(permalink, cfg);
+
+			cfg->tNum = TrackIndex;
+			++TrackIndex;
+
+			std::string& CoverSrc = cfg->CoverSrc;
+			if (NoCoverSrc)
+			{
+				if (!track.CoverUrl.empty()) CoverSrc = track.CoverUrl;
+				else if (!track.ArtistPfpUrl.empty()) CoverSrc = track.ArtistPfpUrl;
+			}
+
+			if (!track.DownloadTrack()) std::cout << "WARNING: failed to download track (skipping)\n";
+
+			if (NoCoverSrc) cfg->CoverSrc.clear();
+		}
+
+		UrlData.erase(41); // erasing all ids
 	}
 
 	return true;
@@ -394,15 +428,7 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly)
 	if (json.contains(publisher) && !json[publisher].is_null()) artist = json[publisher].value("artist", std::string{});
 	else artist = json["user"]["username"].get<std::string>(); // using get() instead of value() cuz this will never be null
 
-	if (type == tTrack)
-	{
-		if (!GetStreamingUrl(json))
-		{
-			flags |= Error;
-			return;
-		}
-	}
-	else if (!GetTrackIDs(json))
+	if ((type == tTrack && !GetStreamingUrl(json)) || (type == tAlbum && !GetTrackIDs(json)))
 	{
 		flags |= Error;
 		return;
