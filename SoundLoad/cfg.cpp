@@ -30,10 +30,10 @@ void Config::AddPathVar()
 
 			if (value.find(ExeDir) == std::wstring::npos)
 			{
-				value += ExeDir;
-
 				if (flags & AddPVar || MessageBox(nullptr, L"Add SoundLoad to user PATH variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES)
 				{
+					value += ExeDir;
+
 					if (RegSetValueExW(key, ValName, 0, REG_EXPAND_SZ, reinterpret_cast<BYTE*>(value.data()), value.size() * sizeof(WCHAR)) == ERROR_SUCCESS)
 					{
 						std::cout << "Added SoundLoad to environment variables!\n";

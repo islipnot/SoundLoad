@@ -336,7 +336,7 @@ bool Album::DownloadAlbum()
 
 bool ScPost::DownloadCover()
 {
-	cpr::Response r = cpr::Get(cpr::Url{ CoverUrl });
+	const cpr::Response r = cpr::Get(cpr::Url{ CoverUrl });
 	if (RequestFail(r))
 	{
 		FetchErr(r);
@@ -385,16 +385,8 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly)
 
 	const Json json = Json::parse(r.text);
 
-	constexpr auto ArtUrl = "artwork_url";
-	constexpr auto large  = "-large.";
-	constexpr auto og     = "-original.";
-
-	if (json[ArtUrl].is_null())
-	{
-		const auto& PfpUrl = json["user"]["avatar_url"];
-		if (!PfpUrl.is_null()) CoverUrl = std::regex_replace(PfpUrl.get<std::string>(), std::regex(large), og);
-	}
-	else CoverUrl = std::regex_replace(json[ArtUrl].get<std::string>(), std::regex(large), og);
+	const auto& ParsedUrl = json.value("artwork_url", json["user"].value("avatar_url", std::string{}));
+	if (!ParsedUrl.empty()) CoverUrl = std::regex_replace(ParsedUrl, std::regex("-large."), "-original.");
 
 	if (CoverOnly) return;
 
@@ -402,22 +394,16 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly)
 
 	if (cfg->flags & Config::NoAudio) return;
 
-	CreatedAt = json.value("created_at",  std::string{});
-	genre     = json.value("genre",       std::string{});
-	tags      = json.value("tag_list",    std::string{});
-
-	constexpr auto desc = "description";
-
-	if (!json[desc].is_null()) description = json.value(desc, std::string{});
+	description = json.value("description", std::string{});
+	CreatedAt   = json.value("created_at",  std::string{});
+	genre       = json.value("genre",       std::string{});
+	tags        = json.value("tag_list",    std::string{});
 
 	constexpr auto kind = "kind";
-	constexpr auto publisher = "publisher_metadata";
 
 	if (json.contains(kind))
 	{
-		const char PostType = json[kind].get<std::string>()[0];
-
-		if (PostType == 't')
+		if (json[kind] == 't')
 		{
 			id = json.value("id", 0);
 			type = tTrack;
@@ -425,8 +411,8 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly)
 		else type = tAlbum;
 	}
 
-	if (json.contains(publisher) && !json[publisher].is_null()) artist = json[publisher].value("artist", std::string{});
-	else artist = json["user"]["username"].get<std::string>(); // using get() instead of value() cuz this will never be null
+	artist = json.value("publisher_metadata", Json::object()).value("artist", 
+		     json.value("user", Json::object())).value("username", std::string{});
 
 	if ((type == tTrack && !GetStreamingUrl(json)) || (type == tAlbum && !GetTrackIDs(json)))
 	{
