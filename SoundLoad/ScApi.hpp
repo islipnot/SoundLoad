@@ -55,17 +55,17 @@ public:
 
 	Track(std::string url, Config* cfg, bool CoverOnly = false);
 
-	bool download()
+	inline bool download()
 	{
 		if (cfg->flags & Config::GetCover && !DownloadCover()) return false;
 
 		if (!(cfg->flags & Config::NoAudio))
 		{
 			if (type == tTrack) return DownloadTrack();
-			else return DownloadAlbum();
+			return DownloadAlbum();
 		}
 	}
 
-	inline bool fail() { return flags & Error; }
+	inline bool fail() const { return flags & Error; }
 
 } Album, ScPost;

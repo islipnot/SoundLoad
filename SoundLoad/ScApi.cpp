@@ -358,16 +358,16 @@ bool ScPost::DownloadCover()
 	return true;
 }
 
-Track::Track(std::string url, Config* pCfg, bool CoverOnly)
+Track::Track(std::string url, Config* pCfg, bool CoverOnly) : cfg{ pCfg }
 {
-	cfg = pCfg;
+	// Erasing link tracking (if present)
 
-	// Requesting track data
-
-	if (url.find('?') != std::string::npos) // for when you use the copy link button rather than copying browser url
+	if (url.find('?') != std::string::npos)
 	{
 		url.erase(url.find_first_of('?'));
 	}
+
+	// Requesting track data
 
 	const std::string ResUrl = "https://api-v2.soundcloud.com/resolve?url=" + url + "&client_id=" + cfg->cid;
 	const cpr::Response r = cpr::Get(cpr::Url{ ResUrl });
@@ -411,8 +411,25 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly)
 		else type = tAlbum;
 	}
 
-	artist = json.value("publisher_metadata", Json::object()).value("artist", 
-		     json.value("user", Json::object())).value("username", std::string{});
+	// Getting track artist
+
+	constexpr auto publisher_metadata = "publisher_metadata";
+	constexpr auto user = "user";
+
+	if (json.contains(publisher_metadata) && !json[publisher_metadata].is_null())
+	{
+		artist = json[publisher_metadata].value("artist", std::string{});
+	}
+	else if (json.contains(user) && !json[user].is_null())
+	{
+		artist = json[user].value("username", std::string{});
+	}
+	else
+	{
+		std::cerr << "ERROR: failed to get artist property (Track::Track)\n";
+		cfg->flags |= Error;
+		return;
+	}
 
 	if ((type == tTrack && !GetStreamingUrl(json)) || (type == tAlbum && !GetTrackIDs(json)))
 	{

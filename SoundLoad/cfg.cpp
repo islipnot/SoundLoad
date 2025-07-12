@@ -51,9 +51,9 @@ void Config::AddPathVar()
 
 void Config::save(CfgFormat& cfg, const std::wstring& path)
 {
-	if (cfg.cid.empty() && !cid.empty()) cfg.cid = cid;
-	if (cfg.ArtDst.empty() && !CoverDst.empty()) cfg.ArtDst = CoverDst;
-	if (cfg.TrackDst.empty() && !TrackDst.empty()) cfg.TrackDst = TrackDst;
+	if (!cid.empty() && (cfg.cid.empty() || cid != cfg.cid)) cfg.cid = cid;
+	if (!CoverDst.empty() && (cfg.ArtDst.empty() || CoverDst != cfg.ArtDst)) cfg.ArtDst = CoverDst;
+	if (!TrackDst.empty() && (cfg.TrackDst.empty() || TrackDst != cfg.TrackDst)) cfg.TrackDst = TrackDst;
 
 	const bool GetTrack = flags & GetAudio;
 	const bool NoTrack  = flags & NoAudio;
