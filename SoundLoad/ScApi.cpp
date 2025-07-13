@@ -33,7 +33,7 @@ static bool DownloadM3U(const std::string& m3u, std::string& buffer)
 
 void Track::HandleTagArt(TagLib::ID3v2::Tag* tag)
 {
-	std::string& CoverSrc = cfg->CoverSrc;
+	std::string& CoverSrc = cfg::CoverSrc;
 
 	if (CoverSrc.empty())
 	{
@@ -48,10 +48,9 @@ void Track::HandleTagArt(TagLib::ID3v2::Tag* tag)
 
 	std::cout << "\nArt source: " << CoverSrc << '\n';
 
-	const int CfgFlags = cfg->flags;
 	auto cover = new TagLib::ID3v2::AttachedPictureFrame;
 
-	if (CfgFlags & Config::tPath)
+	if (cfg::flags & cfg::ArtSrcPath)
 	{
 		std::ifstream ArtFile(CoverSrc, std::ios::binary);
 		if (ArtFile.fail())
@@ -66,13 +65,13 @@ void Track::HandleTagArt(TagLib::ID3v2::Tag* tag)
 		ArtFile.read(buffer.data(), sz);
 		ArtFile.close();
 
-		cover->setPicture(TagLib::ByteVector(buffer.data(), sz));
+		cover->setPicture(TagLib::ByteVector(buffer.data(), static_cast<UINT>(sz)));
 	}
 	else
 	{
-		if (CfgFlags & Config::tScLink)
+		if (cfg::flags & cfg::ArtSrcScLink)
 		{
-			const Track ArtTrack(CoverSrc, cfg, true);
+			const Track ArtTrack(CoverSrc, true);
 			if (ArtTrack.CoverUrl.empty())
 			{
 				std::cout << "WARNING: failed to get art from source\n";
@@ -82,7 +81,7 @@ void Track::HandleTagArt(TagLib::ID3v2::Tag* tag)
 			CoverSrc = ArtTrack.CoverUrl;
 		}
 
-		if (!(CfgFlags & Config::tImgLink)) CoverSrc = std::regex_replace(CoverSrc, std::regex("-large."), "-original.");
+		if (!(cfg::flags & cfg::ArtSrcImgLink)) CoverSrc = std::regex_replace(CoverSrc, std::regex("-large."), "-original.");
 
 		const cpr::Response r = cpr::Get(cpr::Url{ CoverSrc });
 
@@ -100,19 +99,19 @@ void Track::AddTag(const std::string& path)
 
 	// Title
 
-	std::string value = cfg->title.empty() ? title : cfg->title;
+	std::string value = cfg::TrackTitle.empty() ? title : cfg::TrackTitle;
 	tag->setTitle(ToUtf8(value));
 
 	// Album
 
-	if (!cfg->album.empty()) value = cfg->album;
-	else if (!cfg->title.empty()) value = cfg->title;
+	if (!cfg::album.empty()) value = cfg::album;
+	else if (!cfg::TrackTitle.empty()) value = cfg::TrackTitle;
 
 	tag->setAlbum(ToUtf8(value));
 
 	// Artist
 
-	tag->setArtist(ToUtf8((cfg->cArtists.empty() ? artist : cfg->cArtists)));
+	tag->setArtist(ToUtf8((cfg::cArtist.empty() ? artist : cfg::cArtist)));
 
 	// Comments
 
@@ -123,16 +122,16 @@ void Track::AddTag(const std::string& path)
 
 	// Genre
 
-	if (!cfg->genre.empty()) tag->setGenre(ToUtf8(cfg->genre));
+	if (!cfg::genre.empty()) tag->setGenre(ToUtf8(cfg::genre));
 	else if (!genre.empty()) tag->setGenre(ToUtf8(genre));
 
 	// Track number
 
-	if (cfg->tNum != -1) tag->setTrack(cfg->tNum);
+	if (cfg::TrackNumber != -1) tag->setTrack(cfg::TrackNumber);
 
 	// Year
 
-	if (cfg->year != -1) tag->setYear(cfg->year);
+	if (cfg::year != -1) tag->setYear(cfg::year);
 	else tag->setYear(std::stoi(CreatedAt.substr(0, 4)));
 
 	// MP3 cover
@@ -188,7 +187,7 @@ bool Track::GetStreamingUrl(const Json& json)
 
 		if ((format["protocol"] == "progressive") || (hls && format["mime_type"] == "audio/mpeg"))
 		{
-			UrlData = transcoding["url"].get<std::string>() + "?client_id=" + cfg->cid;
+			UrlData = transcoding["url"].get<std::string>() + "?client_id=" + cfg::cid;
 
 			FoundLink = true;
 
@@ -228,10 +227,10 @@ bool Track::DownloadTrack()
 
 	// Sanitizing MP3 output path
 
-	std::string path = cfg->TrackName.empty() ? title : cfg->TrackName;
+	std::string path = cfg::TrackName.empty() ? title : cfg::TrackName;
 	path = std::regex_replace(path, std::regex("[<>:\"/\\|?*]"), "_");
 
-	if (!cfg->TrackDst.empty()) path.insert(0, cfg->TrackDst);
+	if (!cfg::TrackDir.empty()) path.insert(0, cfg::TrackDir);
 	path += ".mp3";
 
 	// Downloading MP3(s) and writing output to disk
@@ -265,13 +264,13 @@ bool Track::DownloadTrack()
 bool Album::DownloadAlbum()
 {
 	UrlData = "https://api-v2.soundcloud.com/tracks?ids=";
-	const std::string CidSegment = "&client_id=" + cfg->cid;
+	const std::string CidSegment = "&client_id=" + cfg::cid;
 
 	// When creating a track ID resolution request, the max amount
 	// of track ID's allowed is 50
 
 	int TrackIndex = 1;
-	const bool NoCoverSrc = cfg->CoverSrc.empty();
+	const bool NoCoverSrc = cfg::CoverSrc.empty();
 
 	for (size_t segment = ids.size() / 50; segment; --segment)
 	{
@@ -302,7 +301,7 @@ bool Album::DownloadAlbum()
 
 		const Json tracks = Json::parse(r.text);
 
-		for (int i = tracks.size() - 1; i >= 0; --i)
+		for (int i = static_cast<int>(tracks.size()) - 1; i >= 0; --i)
 		{
 			const std::string permalink = tracks[i].value("permalink_url", std::string{});
 			if (permalink.empty())
@@ -311,12 +310,12 @@ bool Album::DownloadAlbum()
 				continue;
 			}
 
-			Track track(permalink, cfg);
+			Track track(permalink);
 
-			cfg->tNum = TrackIndex;
+			cfg::TrackNumber = TrackIndex;
 			++TrackIndex;
 
-			std::string& CoverSrc = cfg->CoverSrc;
+			std::string& CoverSrc = cfg::CoverSrc;
 			if (NoCoverSrc)
 			{
 				if (!track.CoverUrl.empty()) CoverSrc = track.CoverUrl;
@@ -325,7 +324,7 @@ bool Album::DownloadAlbum()
 
 			if (!track.DownloadTrack()) std::cout << "WARNING: failed to download track (skipping)\n";
 
-			if (NoCoverSrc) cfg->CoverSrc.clear();
+			if (NoCoverSrc) cfg::CoverSrc.clear();
 		}
 
 		UrlData.erase(41); // erasing all ids
@@ -345,10 +344,10 @@ bool ScPost::DownloadCover()
 
 	std::cout << "\nArtwork URL: " << CoverUrl << '\n';
 
-	std::string path = cfg->CoverName.empty() ? title : cfg->CoverName;
+	std::string path = cfg::ArtName.empty() ? title : cfg::ArtName;
 	path = std::regex_replace(path, std::regex("[<>:\"/\\|?*]"), "_");
 
-	if (!cfg->CoverDst.empty()) path.insert(0, cfg->CoverDst);
+	if (!cfg::ArtDir.empty()) path.insert(0, cfg::ArtDir);
 	path += ".jpg";
 
 	std::ofstream cover(path, std::ios::binary | std::ios::trunc);
@@ -358,7 +357,7 @@ bool ScPost::DownloadCover()
 	return true;
 }
 
-Track::Track(std::string url, Config* pCfg, bool CoverOnly) : cfg{ pCfg }
+Track::Track(std::string url, bool CoverOnly)
 {
 	// Erasing link tracking (if present)
 
@@ -369,13 +368,13 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly) : cfg{ pCfg }
 
 	// Requesting track data
 
-	const std::string ResUrl = "https://api-v2.soundcloud.com/resolve?url=" + url + "&client_id=" + cfg->cid;
+	const std::string ResUrl = "https://api-v2.soundcloud.com/resolve?url=" + url + "&client_id=" + cfg::cid;
 	const cpr::Response r = cpr::Get(cpr::Url{ ResUrl });
 
 	if (RequestFail(r))
 	{
 		FetchErr(r);
-		cfg->flags |= Config::Error;
+		flags |= Error;
 		return;
 	}
 
@@ -392,7 +391,7 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly) : cfg{ pCfg }
 
 	title = json.value("title", std::string{});
 
-	if (cfg->flags & Config::NoAudio) return;
+	if (cfg::flags & cfg::DontGetAudio) return;
 
 	description = json.value("description", std::string{});
 	CreatedAt   = json.value("created_at",  std::string{});
@@ -403,7 +402,7 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly) : cfg{ pCfg }
 
 	if (json.contains(kind))
 	{
-		if (json[kind] == 't')
+		if (std::string(json[kind])[0] == 't')
 		{
 			id = json.value("id", 0);
 			type = tTrack;
@@ -427,7 +426,7 @@ Track::Track(std::string url, Config* pCfg, bool CoverOnly) : cfg{ pCfg }
 	else
 	{
 		std::cerr << "ERROR: failed to get artist property (Track::Track)\n";
-		cfg->flags |= Error;
+		flags |= Error;
 		return;
 	}
 

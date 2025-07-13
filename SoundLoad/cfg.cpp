@@ -1,193 +1,181 @@
 #include "pch.hpp"
 #include "cfg.hpp"
 
+#define HashArg(arg) HashArgEx(arg, sizeof(arg) - 1)
+
+static constexpr SIZE_T HashArgEx(const char* arg, const int sz)
+{
+	SIZE_T hash = 14695981039346656037ULL;
+
+	for (int i = 0 ; i < sz; ++i)
+	{
+		hash ^= static_cast<uint32_t>(arg[i]);
+		hash *= 1099511628211ULL;
+	}
+
+	return hash;
+}
+
 using Json = nlohmann::json;
 
-void Config::AddPathVar()
+namespace cfg
 {
-	HKEY key = nullptr;
-
-	if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Environment", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &key) != ERROR_SUCCESS)
+	void AddToPath()
 	{
-		std::cout << "WARNING: FAILED TO OPEN HKEY_CURRENT_USER\\Environment\n";
-		return;
-	}
+		HKEY key = nullptr;
 
-	constexpr PCWSTR ValName = L"Path";
-	DWORD ValSz = 0;
-
-	if (RegQueryValueExW(key, ValName, nullptr, nullptr, nullptr, &ValSz) == ERROR_SUCCESS)
-	{
-		std::wstring value(ValSz / sizeof(WCHAR), 0);
-
-		if (RegQueryValueExW(key, ValName, nullptr, nullptr, reinterpret_cast<BYTE*>(value.data()), &ValSz) == ERROR_SUCCESS)
+		if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Environment", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &key) != ERROR_SUCCESS)
 		{
-			value.pop_back(); // removing null terminator
-			if (value.back() != L';') value.push_back(L';');
-
-			std::transform(value.begin(),  value.end(),  value.begin(),  ::tolower);
-			std::transform(ExeDir.begin(), ExeDir.end(), ExeDir.begin(), ::tolower);
-
-			if (value.find(ExeDir) == std::wstring::npos)
-			{
-				if (flags & AddPVar || MessageBox(nullptr, L"Add SoundLoad to user PATH variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES)
-				{
-					value += ExeDir;
-
-					if (RegSetValueExW(key, ValName, 0, REG_EXPAND_SZ, reinterpret_cast<BYTE*>(value.data()), value.size() * sizeof(WCHAR)) == ERROR_SUCCESS)
-					{
-						std::cout << "Added SoundLoad to environment variables!\n";
-					}
-					else std::cout << "WARNING: failed to set PATH value\n";
-				}
-			}
-		}
-		else std::cout << "WARNING: failed to query PATH value\n";
-	}
-	else std::cout << "WARNING: failed to query PATH size\n";
-	
-	RegCloseKey(key);
-}
-
-void Config::save(CfgFormat& cfg, const std::wstring& path)
-{
-	if (!cid.empty() && (cfg.cid.empty() || cid != cfg.cid)) cfg.cid = cid;
-	if (!CoverDst.empty() && (cfg.ArtDst.empty() || CoverDst != cfg.ArtDst)) cfg.ArtDst = CoverDst;
-	if (!TrackDst.empty() && (cfg.TrackDst.empty() || TrackDst != cfg.TrackDst)) cfg.TrackDst = TrackDst;
-
-	const bool GetTrack = flags & GetAudio;
-	const bool NoTrack  = flags & NoAudio;
-	const bool GetArt   = flags & GetCover;
-	const bool NoArt    = flags & NoCover;
-
-	if (GetArt) cfg.GetArt = 1;
-	else if (NoArt) cfg.GetArt = 0;
-
-	if (GetTrack) cfg.GetTrack = 1;
-	else if (NoTrack) cfg.GetTrack = 0;
-
-	std::ofstream CfgFile(path, std::ios::out | std::ios::trunc);
-	CfgFile << Json(cfg).dump(4);
-	CfgFile.close();
-}
-
-void Config::read(Json& JsonCfg, CfgFormat& cfg, bool CidOnly)
-{
-	cfg.cid      = JsonCfg.value("cid",      std::string{});
-	cfg.ArtDst   = JsonCfg.value("ArtDst",   std::string{});
-	cfg.TrackDst = JsonCfg.value("TrackDst", std::string{});
-	cfg.GetTrack = JsonCfg.value("GetTrack", 1);
-	cfg.GetArt   = JsonCfg.value("GetArt",   0);
-
-	if (cid.empty()) cid = cfg.cid;
-
-	if (CidOnly) return;
-
-	if (CoverDst.empty()) CoverDst = cfg.ArtDst;
-	if (TrackDst.empty()) TrackDst = cfg.TrackDst;
-
-	if (!(flags & (GetAudio | NoAudio)) && cfg.GetTrack != -1)
-	{
-		if (cfg.GetTrack == false) flags |= NoAudio;
-		else flags |= GetAudio;
-	}
-
-	if (!(flags & (GetCover | NoCover)) && cfg.GetArt != -1)
-	{
-		if (cfg.GetArt == false) flags |= NoCover;
-		else flags |= GetCover;
-	}
-}
-
-Config::Config(int argc, char* argv[])
-{
-	// Hash map and lambdas for args
-
-	const std::unordered_map<std::string, std::function<void(const std::string&)>> map =
-	{
-		{ "save",    [&](const std::string& v) { flags |= SaveCfg;  } },
-		{ "art",     [&](const std::string& v) { flags |= GetCover; } },
-		{ "-art",    [&](const std::string& v) { flags |= NoCover;  } },
-		{ "-audio",  [&](const std::string& v) { flags |= NoAudio;  } },
-		{ "audio",   [&](const std::string& v) { flags |= GetAudio; } },
-		{ "pvar",    [&](const std::string& v) { flags |= AddPVar;  } },
-		{ "cid",     [&](const std::string& v) { if (!v.empty()) cid       = v; } },
-		{ "cfile",   [&](const std::string& v) { if (!v.empty()) CoverName = v; } },
-		{ "cdst",    [&](const std::string& v) { if (!v.empty()) CoverDst  = v; } },
-		{ "csrc",    [&](const std::string& v) { if (!v.empty()) CoverSrc  = v; } },
-		{ "afile",   [&](const std::string& v) { if (!v.empty()) TrackName = v; } },
-		{ "adst",    [&](const std::string& v) { if (!v.empty()) TrackDst  = v; } },
-		{ "title",   [&](const std::string& v) { if (!v.empty()) title     = v; } },
-		{ "comment", [&](const std::string& v) { if (!v.empty()) comments  = v; } },
-		{ "cartist", [&](const std::string& v) { if (!v.empty()) cArtists  = v; } },
-		{ "aartist", [&](const std::string& v) { if (!v.empty()) aArtist   = v; } },
-		{ "album",   [&](const std::string& v) { if (!v.empty()) album     = v; } },
-		{ "genre",   [&](const std::string& v) { if (!v.empty()) genre     = v; } },
-		{ "tnum",    [&](const std::string& v) { tNum = std::stoi(v); } },
-		{ "year",    [&](const std::string& v) { year = std::stoi(v); } }
-	};
-
-	// Parsing args
-
-	if (argc > 1 && std::tolower(argv[1][0]) != 'h')
-	{
-		flags |= (NoAudio | NoCover);
-	}
-
-	for (int i = 1; i < argc; ++i)
-	{
-		if (argv[i][0] != '-')
-		{
-			if (i == 1) // Checking whether or not first arg is a link
-			{
-				++i;
-				if (argc == 2) break; // Only the case if the SoundCloud link is the only arg
-			}
-			else continue;
-		}
-
-		std::string arg = &argv[i][1]; // Ignoring first dash in args
-		std::transform(arg.begin(), arg.end(), arg.begin(), ::tolower);
-
-		const auto it = map.find(arg);
-
-		if (it == map.end())
-		{
-			std::cerr << "ERROR: invalid argument(s)\n";
-			flags |= Error;
+			std::cout << "WARNING: FAILED TO OPEN HKEY_CURRENT_USER\\Environment\n";
 			return;
 		}
 
-		std::string v;
-		if (i + 1 < argc) v = argv[i + 1];
-		it->second(v);
+		constexpr PCWSTR ValName = L"Path";
+		DWORD ValSz = 0;
+
+		if (RegQueryValueExW(key, ValName, nullptr, nullptr, nullptr, &ValSz) == ERROR_SUCCESS)
+		{
+			std::wstring value(ValSz / sizeof(WCHAR), 0);
+
+			if (RegQueryValueExW(key, ValName, nullptr, nullptr, reinterpret_cast<BYTE*>(value.data()), &ValSz) == ERROR_SUCCESS)
+			{
+				value.pop_back(); // removing null terminator
+				if (value.back() != L';') value.push_back(L';');
+
+				std::transform(value.begin(),  value.end(),  value.begin(),  ::tolower);
+				std::transform(ExeDir.begin(), ExeDir.end(), ExeDir.begin(), ::tolower);
+
+				if (value.find(ExeDir) == std::wstring::npos)
+				{
+					if (flags & AddToPathVariables || MessageBox(nullptr, L"Add SoundLoad to user PATH variables?", L"SoundLoad", MB_YESNO | MB_ICONQUESTION) == IDYES)
+					{
+						value += ExeDir;
+
+						if (RegSetValueExW(key, ValName, 0, REG_EXPAND_SZ, reinterpret_cast<BYTE*>(value.data()), value.size() * sizeof(WCHAR)) == ERROR_SUCCESS)
+						{
+							std::cout << "Added SoundLoad to environment variables!\n";
+						}
+						else std::cout << "WARNING: failed to add SoundLoad to PATH variables\n";
+					}
+				}
+			}
+			else std::cout << "WARNING: failed to query PATH value\n";
+		}
+		else std::cout << "WARNING: failed to query PATH size\n";
+
+		RegCloseKey(key);
 	}
 
-	// Checking CoverSrc
-
-	if (!CoverSrc.empty())
+	void SaveConfig(CfgFormat& data, const std::wstring& path)
 	{
-		// This is not fool proof, some invalid links may pass this check
+		if (!cid.empty() && data.cid.empty()) data.cid = cid;
+		if (!ArtDir.empty() && data.ArtDir.empty()) data.ArtDir = ArtDir;
+		if (!TrackDir.empty() && data.TrackDir.empty()) data.TrackDir = TrackDir;
 
-		if (std::filesystem::exists(CoverSrc)) flags |= tPath;
-		else
+		if (flags & GetAudio)          data.GetTrack = true;
+		else if (flags & DontGetAudio) data.GetTrack = false;
+
+		if (flags & GetArtIndependent) data.GetArt = true;
+		else if (flags & DontGetArt)   data.GetArt = false;
+
+		std::ofstream CfgFile(path, std::ios::trunc);
+		CfgFile << Json(data).dump(4);
+		CfgFile.close();
+	}
+
+	void ReadConfig(const CfgFormat& data)
+	{
+		if (cid.empty() && !data.cid.empty()) cid = data.cid;
+		if (ArtDir.empty() && !data.ArtDir.empty()) ArtDir = data.ArtDir;
+		if (TrackDir.empty() && !data.TrackDir.empty()) TrackDir = data.TrackDir;
+		
+		if (!(flags & (GetAudio | DontGetAudio)) && data.GetTrack != -1)
 		{
-			std::transform(CoverSrc.begin(), CoverSrc.end(), CoverSrc.begin(), ::tolower);
-			if (CoverSrc.starts_with("https://soundcloud.com/")) flags |= tScLink;
-			else flags |= tImgLink;
+			flags |= data.GetTrack ? GetAudio : DontGetAudio;
+		}
+		if (!(flags & (GetArtIndependent | DontGetArt)) && data.GetArt != -1)
+		{
+			flags |= data.GetArt ? GetArtIndependent : DontGetArt;
 		}
 	}
 
-	// Getting directory of SoundLoad.exe
-
-	ExeDir.resize(MAX_PATH);
-
-	if (!GetModuleFileName(nullptr, ExeDir.data(), MAX_PATH))
+	bool GetConfig(int argc, char* argv[])
 	{
-		std::cerr << "ERROR: failed to get ExeDir\n";
-		flags |= Error;
-		return;
-	}
+		if (strlen(argv[1]) < 8 || _strnicmp(argv[1], "https://", 8) != 0)
+		{
+			flags |= NoLinkProvided;
+		}
 
-	ExeDir = std::filesystem::path(ExeDir).parent_path().wstring() + L'\\';
+		// Parsing arguments (starts at index 2 if first argument is a link)
+
+		for (int i = 1 + ~(flags & NoLinkProvided); i < argc; ++i)
+		{
+			if (argv[i][0] != '-') continue;
+
+			std::string arg = &argv[i][1]; // [i][1] removes '-'
+			std::transform(arg.begin(), arg.end(), arg.begin(), ::tolower);
+
+			const char* param = nullptr;
+			if (i + 1 < argc) param = argv[i + 1];
+		
+			switch (HashArgEx(arg.c_str(), static_cast<int>(arg.size())))
+			{
+			case HashArg("save"):    { flags |= SaveToConfig;                     break; }
+			case HashArg("art"):     { flags |= GetArtIndependent;                break; }
+			case HashArg("-art"):    { flags |= DontGetArt;                       break; }
+			case HashArg("-audio"):  { flags |= DontGetAudio;                     break; }
+			case HashArg("audio"):   { flags |= GetAudio;                         break; }
+			case HashArg("pvar"):    { flags |= AddToPathVariables;               break; }
+			case HashArg("cid"):     { if (param) cid         = param;            break; }
+			case HashArg("cfile"):   { if (param) ArtName     = param;            break; }
+			case HashArg("cdst"):    { if (param) ArtDir      = param;            break; }
+			case HashArg("csrc"):    { if (param) CoverSrc    = param;            break; }
+			case HashArg("afile"):   { if (param) TrackName   = param;            break; }
+			case HashArg("adst"):    { if (param) TrackDir    = param;            break; }
+			case HashArg("title"):   { if (param) TrackTitle  = param;            break; }
+			case HashArg("comment"): { if (param) comment     = param;            break; }
+			case HashArg("cartist"): { if (param) cArtist     = param;            break; }
+			case HashArg("aartist"): { if (param) aArtist     = param;            break; }
+			case HashArg("album"):   { if (param) album       = param;            break; }
+			case HashArg("genre"):   { if (param) genre       = param;            break; }
+			case HashArg("tnum"):    { if (param) TrackNumber = std::stoi(param); break; }
+			case HashArg("year"):    { if (param) year        = std::stoi(param); break; }
+
+			default:
+			{
+				std::cerr << "ERROR: invalid argument \"" << arg << "\"\n";
+				return false;
+			}
+			}
+		}
+
+		// Getting cover art source type
+
+		if (!CoverSrc.empty())
+		{
+			if (std::filesystem::exists(CoverSrc))
+			{
+				flags |= ArtSrcPath;
+			}
+			else
+			{
+				std::transform(CoverSrc.begin(), CoverSrc.end(), CoverSrc.begin(), ::tolower);
+				flags |= CoverSrc.starts_with("https://soundcloud.com/") ? ArtSrcScLink : ArtSrcImgLink;
+			}
+		}
+
+		// Getting SoundLoad.exe directory
+
+		ExeDir.resize(MAX_PATH);
+
+		if (!GetModuleFileName(nullptr, ExeDir.data(), MAX_PATH))
+		{
+			std::cerr << "ERROR: failed to get cfg.json path\n";
+			return false;
+		}
+
+		ExeDir = std::filesystem::path(ExeDir).parent_path().wstring() + L'\\';
+
+		return true;
+	}
 }

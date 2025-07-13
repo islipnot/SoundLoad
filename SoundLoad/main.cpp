@@ -2,86 +2,95 @@
 #include "cfg.hpp"
 #include "ScApi.hpp"
 
-/* TODO
-*
-* make -clear & -fresh work
-*/
-
 using Json = nlohmann::json;
 
 int main(int argc, char* argv[])
 {
-    Config cfg(argc, argv);
-    if (cfg.fail()) return 1;
+    // Parsing arguments
 
-    // Reading and saving cfg.json
+    if (argc < 2)
+    {
+        std::cerr << "ERROR: insufficient arguments\n";
+        return 1;
+    }
 
-    std::wstring CfgPath = cfg.ExeDir + L"cfg.json";
+    if (!cfg::GetConfig(argc, argv))
+    {
+        return 2;
+    }
+
+    // Adding SoundLoad to PATH variables (if requested)
+
+    std::wstring CfgPath = cfg::ExeDir + L"cfg.json";
     const bool CfgExists = std::filesystem::exists(CfgPath);
 
-    if (cfg.flags & Config::AddPVar || !CfgExists)
+    if (cfg::flags & cfg::AddToPathVariables || !CfgExists)
     {
-        cfg.AddPathVar();
+        cfg::AddToPath(); // AddToPathVariables bypasses MessageBox prompt
     }
 
-    int& flags = cfg.flags;
-    const bool SkipCfg = flags & Config::SkipCfg;
-    CfgFormat CfgData;
+    // Reading/writing to cfg.json
 
-    if (CfgExists)
     {
-        Json JsonCfg;
-        std::ifstream CfgFile(CfgPath, std::ios::in);
+        CfgFormat data;
 
-        CfgFile >> JsonCfg;
-        CfgFile.close();
+        if (CfgExists)
+        {
+            Json JsonCfg;
+            std::ifstream CfgFile(CfgPath);
 
-        cfg.read(JsonCfg, CfgData, SkipCfg);
+            CfgFile >> JsonCfg;
+            CfgFile.close();
+
+            data = JsonCfg.get<CfgFormat>();
+            cfg::ReadConfig(data);
+        }
+
+        if (cfg::flags & cfg::SaveToConfig)
+        {
+            cfg::SaveConfig(data, CfgPath);
+        }
+
+        CfgPath.clear();
     }
 
-    if (!SkipCfg && flags & Config::SaveCfg) cfg.save(CfgData, CfgPath);
-
-    CfgPath.clear();
-
-    if ((flags & Config::NoLink) == Config::NoLink)
+    if (cfg::flags & cfg::NoLinkProvided)
     {
         std::cout << "\n[!] INPUT HANDLED\n";
         return 0;
     }
 
-    // Finishing config initialization
+	// Finishing cfg initialization
 
-    if (!(flags & (Config::NoAudio | Config::NoCover)))
+    if (cfg::cid.empty())
     {
-        if (cfg.cid.empty())
-        {
-            std::cerr << "ERROR: no client ID\n";
-            return 1;
-        }
-
-        const std::string& TrackName = cfg.TrackName;
-
-        if (!TrackName.empty())
-        {
-            if (cfg.title.empty()) cfg.title = TrackName;
-            if (cfg.album.empty()) cfg.album = TrackName;
-            if (cfg.CoverName.empty()) cfg.CoverName = TrackName;
-        }
+		std::cerr << "ERROR: no client ID provided\n";
+        return 3;
     }
 
-    std::string& TrackDst = cfg.TrackDst;
-    std::string& CoverDst = cfg.CoverDst;
+    if (!cfg::TrackName.empty())
+    {
+        if (cfg::TrackTitle.empty()) cfg::TrackTitle = cfg::TrackName;
+        if (cfg::album.empty()) cfg::album = cfg::TrackName;
+        if (cfg::ArtName.empty()) cfg::ArtName = cfg::TrackName;
+    }
 
-    std::replace(TrackDst.begin(), TrackDst.end(), '\\', '/');
-    std::replace(CoverDst.begin(), CoverDst.end(), '\\', '/');
+    if (!cfg::TrackDir.empty())
+    {
+        std::replace(cfg::TrackDir.begin(), cfg::TrackDir.end(), '\\', '/');
+        if (cfg::TrackDir.back() != '/') cfg::TrackDir.push_back('/');
+    }
 
-    if (!TrackDst.empty() && TrackDst.back() != '/') TrackDst.push_back('/');
-    if (!CoverDst.empty() && CoverDst.back() != '/') CoverDst.push_back('/');
+    if (!cfg::ArtDir.empty())
+    {
+        std::replace(cfg::ArtDir.begin(), cfg::ArtDir.end(), '\\', '/');
+        if (cfg::ArtDir.back() != '/') cfg::ArtDir.push_back('/');
+    }
 
-    // Downloading track/cover
+    // Downloading track/art
 
-    ScPost post(argv[1], &cfg);
-    if (post.fail() || !post.download()) return 1;
+    ScPost track(argv[1]);
+    if (track.fail() || !track.download()) return 4;
 
     std::cout << "\n[!] DOWNLOAD COMPLETE\n";
 

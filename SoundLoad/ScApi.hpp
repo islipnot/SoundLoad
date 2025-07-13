@@ -1,4 +1,5 @@
 #pragma once
+
 #include "cfg.hpp"
 
 #define FetchErr(response) std::cerr << "REQUEST FAILED: " << response.url << " (" << response.error.message << " )\n" // Expects cpr::Response
@@ -7,9 +8,10 @@
 
 #define ToUtf8(str) TagLib::String(str.c_str(), TagLib::String::UTF8)
 
+using Json = nlohmann::json;
+
 typedef class Track
 {
-	Config* cfg = nullptr;
 	bool hls = false;
 	int type = -1;
 
@@ -29,7 +31,7 @@ public:
 
 	enum TrackFlags
 	{
-		Error  = 1,
+		Error = 1,
 		tTrack = 1 << 1, // Object represents a song
 		tAlbum = 1 << 2, // Object represents album/playlist
 	};
@@ -53,13 +55,13 @@ public:
 
 	// Methods
 
-	Track(std::string url, Config* cfg, bool CoverOnly = false);
+	Track(std::string url, bool CoverOnly = false);
 
 	inline bool download()
 	{
-		if (cfg->flags & Config::GetCover && !DownloadCover()) return false;
+		if (cfg::flags & cfg::GetArtIndependent && !DownloadCover()) return false;
 
-		if (!(cfg->flags & Config::NoAudio))
+		if (!(cfg::flags & cfg::DontGetAudio))
 		{
 			if (type == tTrack) return DownloadTrack();
 			return DownloadAlbum();

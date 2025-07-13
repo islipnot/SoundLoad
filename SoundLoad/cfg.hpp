@@ -1,119 +1,66 @@
 #pragma once
 
-/* VALID ARGUMENTS (case-insensitive)
-*
-* [*] GENERAL
-*
-* -cid  > SoundCloud client ID (saveable)
-* -PVar > Adds program to user PATH variables
-*
-* [*] CONFIG MANAGEMENT
-*
-* -save  > Saves applicable args to cfg.json
-* -fresh > Does not read from cfg.json (besides CID)
-* -clear > Restores default state for cfg.json
-*
-* [*] ART MANAGEMENT
-*
-* -cFile > Cover art file name
-* -cDst  > Cover art output directory (saveable)
-* -cSrc  > Cover art source (path, sc link, img link)
-* -art   > Downloads cover art seperately from MP3 (saveable)
-* --art  > Opposite of "-art" (saveable)
-*
-* [*] MP3 MANAGEMENT
-*
-* -aFile  > MP3 file name
-* -aDst   > MP3 output directory (saveable)
-* --audio > Audio will not be downloaded (saveable)
-* -audio  > Opposite of "--audio" (saveable)
-*
-* [*] MP3 ID3v2 TAG PROPERTIES
-*
-* -title
-* -comment
-* -cArtist > "contributing artists"
-* -aArtist > "album artist"
-* -album
-* -genre
-* -tNum
-* -year
-*/
-
-using Json = nlohmann::json;
+// JSON CONFIG FORMAT
 
 struct CfgFormat
 {
 	std::string cid;
-	std::string ArtDst;   // Defaults to Config::ExeDir
-	std::string TrackDst; // Defaults to Config::ExeDir
-	char GetArt   = -1;   // Defaults to 0
-	char GetTrack = -1;   // Defaults to 1
+	std::string ArtDir;
+	std::string TrackDir;
+	char GetArt   = -1;
+	char GetTrack = -1;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CfgFormat, cid, ArtDst, TrackDst, GetArt, GetTrack)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CfgFormat, cid, ArtDir, TrackDir, GetArt, GetTrack)
 
-struct Config
+// CONFIG SYSTEM
+
+namespace cfg
 {
-	// Enums
+	// ENUMS
 
-	enum CfgFlags
+	enum CfgFlags : WORD
 	{
-		Error    = 1,       // Error occured within a member function
-		SkipCfg  = 1 << 1,  // Does not read from cfg.json (besides CID)
-		SaveCfg  = 1 << 2,  // Save applicable arguments to cfg.json (-save)
-		ClearCfg = 1 << 3,  // Set all data in cfg.json to the default values (-clear)
-		GetCover = 1 << 4,  // Downloads cover art seperate from MP3 metadata (-art)
-		NoCover  = 1 << 5,  // Reverses the effect of GetCover when saved to cfg (--art)
-		NoAudio  = 1 << 6,  // Does not download audio from the track link (--audio)
-		GetAudio = 1 << 7,  // Reverses the effect of NoAudio when saved to cfg (-audio)
-		AddPVar  = 1 << 8,  // Adds program to user PATH variables
-		tPath    = 1 << 9,  // CoverSrc is an image path
-		tScLink  = 1 << 10, // CoverSrc is a SoundCloud link
-		tImgLink = 1 << 11, // CoverSrc is an image link
-
-		NoLink = NoAudio | NoCover
+		AddToPathVariables = 1,      // Adds SoundLoad to PATH variables
+		SaveToConfig       = 1 << 1, // Saves applicable arguments to cfg.json
+		GetArtIndependent  = 1 << 2, // Independently downloads cover art (saveable)
+		DontGetArt         = 1 << 3, // Disables GetArtIndependent if it was saved to cfg.json (saveable, enabled by default)
+		DontGetAudio       = 1 << 4, // MP3 will not be downloaded (saveable)
+		GetAudio           = 1 << 5, // MP3 will be downloaded (saveable, enabled by default)
+		NoLinkProvided     = 1 << 6, // Used when config modifications are the only operation
+		ArtSrcPath         = 1 << 7, // CoverSrc is a path
+		ArtSrcScLink       = 1 << 8, // CoverSrc is a SoundCloud link
+		ArtSrcImgLink      = 1 << 9, // CoverSrc is a direct image link
 	};
 
-	// File info
+	// VARIABLES
 
-	std::string TrackName;
-	std::string CoverName; // Defaults to TrackName
-	std::string title;     // Defaults to TrackName
-	std::string comments;
-	std::string cArtists; // Contributing artists
-	std::string aArtist;  // Album artist
-	std::string album;    // Defaults to TrackName
-	std::string genre;
-	int tNum = -1;
-	int year = -1;
+	inline WORD flags = 0;
 
-	// Data
+	inline std::string TrackName;  // MP3 file name
+	inline std::string ArtName;    // JPG file name (if independent art download is enabled)
+	inline std::string TrackTitle; // MP3 ID3v2 title property (defaults to TrackName)
+	inline std::string comment;    // MP3 ID3v2 comments property
+	inline std::string cArtist;    // MP3 ID3v2 contributing artists property
+	inline std::string aArtist;    // MP3 ID3v2 album artist property
+	inline std::string album;      // MP3 ID3v2 album property
+	inline std::string genre;      // MP3 ID3v2 genre property
+	inline int TrackNumber;        // MP3 ID3v2 # property
+	inline int year;               // MP3 ID3v2 year property
 
-	std::string cid;
-	std::string TrackDst; // MP3 output path
-	std::string CoverDst; // Cover art output path
-	std::string CoverSrc; // Cover art source
-	std::wstring ExeDir;  // Directory of SoundLoad.exe
+	inline std::string cid;      // SoundCloud client ID
+	inline std::string TrackDir; // MP3 output directory
+	inline std::string ArtDir;   // JPG output directory
+	inline std::string CoverSrc; // MP3 ID3v2 cover art source (can be image link, soundcloud track link, or path on computer)
+	inline std::wstring ExeDir;  // SoundLoad.exe path
 
-	int flags = 0;
+	// FORWARD DECLARATIONS
 
-	// Methods
+	void AddToPath();
 
-	Config(int argc, char* argv[]);
+	void SaveConfig(CfgFormat& data, const std::wstring& path);
 
-	void AddPathVar();
+	void ReadConfig(const CfgFormat& data);
 
-	void save(CfgFormat& cfg, const std::wstring& path);
-
-	void read(Json& JsonCfg, CfgFormat& cfg, bool CidOnly);
-
-	inline bool fail() { return flags & Error; }
-};
-
-/* STRUCT INFO
-*
-* CoverSrc can be a link to a SoundCloud track (in which case it'll
-* use the cover art of the track for the MP3), a regular image link,
-* or a path to an image you already have downloaded.
-*/
+	bool GetConfig(int argc, char* argv[]);
+}
