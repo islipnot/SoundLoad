@@ -108,7 +108,7 @@ namespace cfg
 
 		// Parsing arguments (starts at index 2 if first argument is a link)
 
-		for (int i = 1 + ~(flags & NoLinkProvided); i < argc; ++i)
+		for (int i = 1 + (flags & NoLinkProvided == 0); i < argc; ++i)
 		{
 			if (argv[i][0] != '-') continue;
 

@@ -31,7 +31,18 @@ static bool DownloadM3U(const std::string& m3u, std::string& buffer)
 	return true;
 }
 
-void Track::HandleTagArt(TagLib::ID3v2::Tag* tag)
+static bool GetJsonValue(const Json& json, const char* name, std::string& buffer)
+{
+	if (!json.contains(name) || json[name].is_null())
+	{
+		return false;
+	}
+
+	buffer = json.value(name, std::string{});
+	return true;
+}
+
+void Track::HandleTagArt(TagLib::ID3v2::Tag* tag) const
 {
 	std::string& CoverSrc = cfg::CoverSrc;
 
@@ -92,7 +103,7 @@ void Track::HandleTagArt(TagLib::ID3v2::Tag* tag)
 	tag->addFrame(cover);
 }
 
-void Track::AddTag(const std::string& path)
+void Track::AddTag(const std::string& path) const
 {
 	TagLib::MPEG::File file(path.c_str());
 	TagLib::ID3v2::Tag* tag = file.ID3v2Tag(true);
@@ -205,7 +216,7 @@ bool Track::GetStreamingUrl(const Json& json)
 	return true;
 }
 
-bool Track::DownloadTrack()
+bool Track::DownloadTrack() const
 {
 	cpr::Response r = cpr::Get(cpr::Url{ UrlData });
 	if (RequestFail(r))
@@ -333,7 +344,7 @@ bool Album::DownloadAlbum()
 	return true;
 }
 
-bool ScPost::DownloadCover()
+bool ScPost::DownloadCover() const
 {
 	const cpr::Response r = cpr::Get(cpr::Url{ CoverUrl });
 	if (RequestFail(r))
@@ -389,14 +400,14 @@ Track::Track(std::string url, bool CoverOnly)
 
 	if (CoverOnly) return;
 
-	title = json.value("title", std::string{});
+	GetJsonValue(json, "title", title);
 
 	if (cfg::flags & cfg::DontGetAudio) return;
 
-	description = json.value("description", std::string{});
-	CreatedAt   = json.value("created_at",  std::string{});
-	genre       = json.value("genre",       std::string{});
-	tags        = json.value("tag_list",    std::string{});
+	GetJsonValue(json, "description", description);
+	GetJsonValue(json, "created_at",  CreatedAt);
+	GetJsonValue(json, "genre",       genre);
+	GetJsonValue(json, "tag_list",    tags);
 
 	constexpr auto kind = "kind";
 

@@ -17,15 +17,15 @@ typedef class Track
 
 	std::vector<int> ids; // for albums/playlists with over 50 songs (the limit per request)
 
-	bool DownloadTrack();
+	bool DownloadTrack() const;
 	bool DownloadAlbum(); // Works for playlists
-	bool DownloadCover();
+	bool DownloadCover() const;
 
 	bool GetTrackIDs(const Json& json);
 	bool GetStreamingUrl(const Json& json);
 
-	void AddTag(const std::string& path);
-	void HandleTagArt(TagLib::ID3v2::Tag* tag);
+	void AddTag(const std::string& path) const;
+	void HandleTagArt(TagLib::ID3v2::Tag* tag) const;
 
 public:
 
