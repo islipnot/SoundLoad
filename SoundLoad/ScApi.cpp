@@ -405,6 +405,8 @@ Track::Track(std::string url, bool CoverOnly)
 		GetJsonValue(json["user"], "avatar_url", CoverUrl);
 	}
 
+	CoverUrl = std::regex_replace(CoverUrl, std::regex("-large."), "-original.");
+
 	if (CoverOnly) return;
 
 	GetJsonValue(json, "title", title);
