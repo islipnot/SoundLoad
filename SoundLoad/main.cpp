@@ -48,6 +48,11 @@ int main(int argc, char* argv[])
 
         if (cfg::flags & cfg::SaveToConfig)
         {
+            if (!CfgExists)
+            {
+                data.GetTrack = true;
+            }
+
             cfg::SaveConfig(data, CfgPath);
         }
 

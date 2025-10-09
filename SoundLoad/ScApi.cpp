@@ -31,9 +31,14 @@ static bool DownloadM3U(const std::string& m3u, std::string& buffer)
 	return true;
 }
 
+static bool JsonValueExists(const Json& json, const char* name)
+{
+	return json.contains(name) && !json[name].is_null();
+}
+
 static bool GetJsonValue(const Json& json, const char* name, std::string& buffer)
 {
-	if (!json.contains(name) || json[name].is_null())
+	if (!JsonValueExists(json, name))
 	{
 		return false;
 	}
@@ -395,8 +400,10 @@ Track::Track(std::string url, bool CoverOnly)
 
 	const Json json = Json::parse(r.text);
 
-	const auto& ParsedUrl = json.value("artwork_url", json["user"].value("avatar_url", std::string{}));
-	if (!ParsedUrl.empty()) CoverUrl = std::regex_replace(ParsedUrl, std::regex("-large."), "-original.");
+	if (!GetJsonValue(json, "artwork_url", CoverUrl))
+	{
+		GetJsonValue(json["user"], "avatar_url", CoverUrl);
+	}
 
 	if (CoverOnly) return;
 
@@ -426,17 +433,10 @@ Track::Track(std::string url, bool CoverOnly)
 	constexpr auto publisher_metadata = "publisher_metadata";
 	constexpr auto user = "user";
 
-	if (json.contains(publisher_metadata) && !json[publisher_metadata].is_null())
+	if ((!JsonValueExists(json, publisher_metadata) || !GetJsonValue(json[publisher_metadata], "artist", artist))
+	&&  (!JsonValueExists(json, user)               || !GetJsonValue(json[user],             "username", artist)))
 	{
-		artist = json[publisher_metadata].value("artist", std::string{});
-	}
-	else if (json.contains(user) && !json[user].is_null())
-	{
-		artist = json[user].value("username", std::string{});
-	}
-	else
-	{
-		std::cerr << "ERROR: failed to get artist property (Track::Track)\n";
+		std::cerr << "ERROR: failed to get artist property\n";
 		flags |= Error;
 		return;
 	}
