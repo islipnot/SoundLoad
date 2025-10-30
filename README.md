@@ -17,44 +17,46 @@ A SoundCloud client ID is required for every use unless saved to `cfg.json`.
 
 ### Arguments (case-insensitive)
 
-| Argument    | Description                                          | Saveable? | Album/Playlist? |
-| ----------- | ---------------------------------------------------- | --------- | --------------- |
-| `-cid`      | SoundCloud client ID                                 | ✅        | ✅             |
-| `-pvars`    | Adds program to user PATH variables                  | ❌        | ✅             |
-| `-save`     | Saves applicable arguments to `cfg.json`             | ❌        | ✅             |
-| `-img-name` | Cover art file name                                  | ❌        | ✅             |
-| `-img-dst`  | Cover art output directory                           | ✅        | ✅             |
-| `-img-src`  | Cover art source (path, SoundCloud link, image link) | ❌        | ✅             |
-| `-art`      | Independent cover art download                       | ✅        | ✅             |
-| `-n-art`    | Disable independent cover art download               | ✅        | ✅             |
-| `-mp3-name` | MP3 file name                                        | ❌        | ✅             |
-| `-mp3-dst`  | MP3 output directory                                 | ✅        | ✅             |
-| `-audio`    | Enables MP3 downloading                              | ✅        | ✅             |
-| `-n-audio`  | Disables MP3 downloading                             | ✅        | ✅             |
-| `-title`    | ID3v2 title                                          | ❌        | ❌             |
-| `-comment`  | ID3v2 comment                                        | ❌        | ❌             |
-| `-artists`  | ID3v2 contributing artists                           | ❌        | ❌             |
-| `-a-artist` | ID3v2 album artist                                   | ❌        | ✅             |
-| `-album`    | ID3v2 album                                          | ❌        | ❌             |
-| `-genre`    | ID3v2 genre                                          | ❌        | ❌             |
-| `-num`      | ID3v2 track number                                   | ❌        | ❌             |
-| `-year`     | ID3v2 year                                           | ❌        | ✅             |
+| Argument      | Description                                          | Saveable? | Album/Playlist? |
+| ------------- | ---------------------------------------------------- | --------- | --------------- |
+| `-cid`        | SoundCloud client ID                                 | ✅        | ✅             |
+| `-pvars`      | Adds program to user PATH variables                  | ❌        | ✅             |
+| `-save`       | Saves applicable arguments to `cfg.json`             | ❌        | ✅             |
+| `-img-name`   | Cover art file name                                  | ❌        | ✅             |
+| `-img-dst`    | Cover art output directory                           | ✅        | ✅             |
+| `-img-src`    | Cover art source (path, SoundCloud link, image link) | ❌        | ✅             |
+| `-art`        | Independent cover art download                       | ✅        | ✅             |
+| `-n-art`      | Disable independent cover art download               | ✅        | ✅             |
+| `-audio-name` | Audio file name                                      | ❌        | ✅             |
+| `-audio-dst`  | Audio output directory                               | ✅        | ✅             |
+| `-audio`      | Enables audio downloads                              | ✅        | ✅             |
+| `-n-audio`    | Disables MP3 downloads                               | ✅        | ✅             |
+| `-aac`        | Enables lossless downloads                           | ✅        | ✅             |
+| `-n-aac`      | Disables lossless downloads                          | ✅        | ✅             |
+| `-title`      | Audio tag title                                      | ❌        | ❌             |
+| `-comment`    | Audio tag comment                                    | ❌        | ❌             |
+| `-artists`    | Audio tag contributing artists                       | ❌        | ❌             |
+| `-a-artist`   | Audio tag album artist                               | ❌        | ✅             |
+| `-album`      | Audio tag album                                      | ❌        | ❌             |
+| `-genre`      | Audio tag genre                                      | ❌        | ❌             |
+| `-num`        | Audio tag track number                               | ❌        | ❌             |
+| `-year`       | Audio tag year                                       | ❌        | ✅             |
 
 
 ## Examples
 
 ### Setting basic config info
-By running this, the client ID, MP3 output dir, and cover art output dir will be saved to cfg.json. Note that creating
+By running this, the client ID, audio output dir, and cover art output dir will be saved to cfg.json. Note that creating
 a local files folder for spotify like shown in this example makes importing songs to spotify extremely quick.
 ```
-c:>soundload -cid cWww6yL0wMOcwhn4GEYjHVAg3mwMPBis -mp3-dst "c:/spotify local files" -img-dst "c:/cover art" -save
+c:>soundload -cid cWww6yL0wMOcwhn4GEYjHVAg3mwMPBis -audio-dst "c:/spotify local files" -img-dst "c:/cover art" -save
 ```
 
 ### Downloading a song
-This will download the song, name the MP3 file "Extra Stixx", and set the contributing artists to "Pook G, Lul Jody".
+This will download the song, name the audio file "Extra Stixx", and set the contributing artists to "Pook G, Lul Jody".
 Other metadata will be automatically scraped from the page, but can of course be set manually.
 ```
-c:>soundload https://soundcloud.com/fat-kid-915108395/exrta-stixxs-ft-pook-g-lul -mp3-name "Extra Stixx" -artists "Pook G, Lul Jody"
+c:>soundload https://soundcloud.com/fat-kid-915108395/exrta-stixxs-ft-pook-g-lul -audio-name "Extra Stixx" -artists "Pook G, Lul Jody"
 ```
 
 ### Downloading an album
@@ -74,10 +76,13 @@ c:>soundload https://soundcloud.com/sellasouls/bdayy-sexxx -n-audio -art -save
 ```
 
 ## Notes
+- Lossless downloads can be enabled with the -aac command, resulting in a .m4a file type. The reason 
+  this is disabled by default is because Spotify won't properly play it, which defeats the entire purpose 
+  if you're downloading to local files.
 - `nlohmann::json::value` has multiple modifications in this repo - check `pch.hpp` for more info.
 - There is full unicode support both on command line and in parsing metadata, though it's tedious to 
   actually get proper encoding on command line in Windows.
-- In the ID3v2 `comments` property of downloaded MP3's, the program will store the exact timestamp 
+- In the `comments` property of downloaded audio tags, the program will store the exact timestamp 
   of the upload, the original description, and the original tags. You can easily add on to this list 
   in `site_api.cpp/sc_upload::sc_upload()` by using the `add_comment` lambda.
 - The following characters will be replaced with an underscore in file names: `< > : " \ | ? *`

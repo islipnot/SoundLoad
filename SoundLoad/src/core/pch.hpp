@@ -21,6 +21,9 @@
 #include "taglib/mpeg/mpegfile.h"
 #include "taglib/mpeg/id3v2/id3v2tag.h"
 #include "taglib/mpeg/id3v2/frames/attachedpictureframe.h"
+#include "taglib/mp4/mp4file.h"
+#include "taglib/mp4/mp4tag.h"
+#include "taglib/mp4/mp4coverart.h"
 
 /* nlohmann::json modifications
 * 

@@ -15,40 +15,6 @@ static void mb_to_wide(const std::string& src, std::wstring& dst)
 	}
 }
 
-static bool download_m3u(const std::string& raw_data, std::string& mp3_buffer)
-{
-	// M3U's are just a list of links which lead to segments of an MP3 file.
-	// HLS streaming links use these, though almost all tracks I've seen use progressive (one download).
-
-	std::istringstream iss(raw_data);
-	std::string line;
-
-	while (std::getline(iss, line))
-	{
-		if (line.starts_with("#EXTINF"))
-		{
-			std::getline(iss, line); // line following "#EXTINF" contains next MP3 segment
-
-			const cpr::Response r = cpr::Get(cpr::Url{ line });
-			if (request_failed(r))
-			{
-				err::log_net(r);
-				return false;
-			}
-
-			mp3_buffer += r.text;
-		}
-	}
-
-	if (mp3_buffer.empty())
-	{
-		err::log("failed to parse M3U file");
-		return false;
-	}
-
-	return true;
-}
-
 static bool resolve_post(std::wstring& url, Json& buffer)
 {
 	// Erasing tracking data from link
@@ -74,16 +40,128 @@ static bool resolve_post(std::wstring& url, Json& buffer)
 	return true;
 }
 
+static size_t read_file(const std::wstring& path, char** buffer)
+{
+	std::ifstream file(path, std::ios::binary | std::ios::ate);
+	if (file.fail())
+	{
+		err::log(L"failed to open file \"{}\"", path);
+		return 0;
+	}
+
+	const size_t sz = file.tellg();
+	char* raw_data = new char[sz];
+
+	file.seekg(0, std::ios::beg);
+	file.read(raw_data, sz);
+	file.close();
+
+	*buffer = raw_data;
+	return sz;
+}
+
 //
 //// MEMBER FUNCTIONS
 //
 
-void sc_upload::add_tag(const std::wstring& path)
+bool sc_upload::get_cover_link(std::string& buffer) const
+{
+	if (cfg::f.cover_src_is_sc_link)
+	{
+		Json post_data;
+		if (!resolve_post(cfg::image_src, post_data))
+		{
+			return false;
+		}
+
+		buffer = post_data.value("artwork_url");
+		if (buffer.empty())
+		{
+			return false;
+		}
+
+		buffer = std::regex_replace(buffer, std::regex("large."), "original.");
+		return true;
+	}
+	else
+	{
+		buffer.resize(this->art_src.size());
+		WideCharToMultiByte(CP_UTF8, 0, this->art_src.c_str(), -1, buffer.data(), buffer.size(), nullptr, nullptr);
+		return true;
+	}
+}
+
+void sc_upload::add_m4a_tag(const std::wstring& path) const
+{
+	// Opening file
+
+	TagLib::MP4::File file(path.c_str());
+	TagLib::MP4::Tag* const tag = file.tag();
+
+	// Saving basic metadata
+
+	tag->setAlbum(this->album);
+
+	tag->setTitle(this->title);
+
+	tag->setArtist(this->artist);
+
+	tag->setGenre(this->genre);
+
+	tag->setComment(this->description);
+
+	tag->setYear(this->year);
+
+	// Getting cover art
+
+	if (cfg::f.cover_src_is_path)
+	{
+		char* raw_image;
+		const size_t sz = read_file(cfg::image_src, &raw_image);
+		if (!sz)
+		{
+			file.save();
+			return;
+		}
+
+		TagLib::MP4::CoverArtList cover_list;
+		cover_list.append({ TagLib::MP4::CoverArt::Unknown, { raw_image, static_cast<UINT>(sz) } });
+		delete[] raw_image;
+
+		tag->setItem("covr", TagLib::MP4::Item(cover_list));
+	}
+	else
+	{
+		std::string cover_url;
+		if (!this->get_cover_link(cover_url))
+		{
+			file.save();
+			return;
+		}
+
+		const cpr::Response r = cpr::Get(cpr::Url{ cover_url });
+		if (request_failed(r))
+		{
+			err::log_net(r);
+			file.save();
+			return;
+		}
+
+		TagLib::MP4::CoverArtList cover_list;
+		cover_list.append({ TagLib::MP4::CoverArt::Unknown, { r.text.data(), static_cast<UINT>(r.text.size())} });
+
+		tag->setItem("covr", TagLib::MP4::Item(cover_list));
+	}
+
+	file.save();
+}
+
+void sc_upload::add_mp3_tag(const std::wstring& path) const
 {
 	// Creating ID3v2 tag
 
 	TagLib::MPEG::File file(path.c_str());
-	TagLib::ID3v2::Tag* tag = file.ID3v2Tag(true);
+	TagLib::ID3v2::Tag* const tag = file.ID3v2Tag(true);
 
 	// Setting metadata
 
@@ -97,7 +175,7 @@ void sc_upload::add_tag(const std::wstring& path)
 
 	tag->setComment(this->description);
 	
-	tag->setYear(static_cast<UINT>(this->year));
+	tag->setYear(this->year);
 
 	// Setting cover art
 
@@ -105,59 +183,29 @@ void sc_upload::add_tag(const std::wstring& path)
 
 	if (cfg::f.cover_src_is_path)
 	{
-		std::ifstream cover_file(cfg::image_src, std::ios::binary | std::ios::ate);
-		if (cover_file.fail())
+		char* raw_image;
+		const size_t sz = read_file(cfg::image_src, &raw_image);
+		if (!sz)
 		{
-			err::log(L"failed to open cover art file \"{}\"", cfg::image_src);
 			file.save();
 			delete cover;
 			return;
 		}
-
-		const size_t sz = cover_file.tellg();
-		char* raw_image = new char[sz];
-
-		cover_file.seekg(0, std::ios::beg);
-		cover_file.read(raw_image, sz);
-		cover_file.close();
 
 		cover->setPicture({ raw_image, static_cast<UINT>(sz) });
 		delete[] raw_image;
 	}
 	else
 	{
-		// For any of the remaining cases, the goal is to set this->art_src to the cover art link.
-		// This will already be the case if an image link is provided or if no source was specified 
-		// by the user. If a SoundCloud post was specified as the art source, we will have to resolve 
-		// the artwork_url from it.
-
-		if (cfg::f.cover_src_is_sc_link) // User specified a different SoundCloud post to use the cover art from
+		std::string cover_url;
+		if (!this->get_cover_link(cover_url))
 		{
-			Json post_data;
-			if (!resolve_post(cfg::image_src, post_data))
-			{
-				file.save();
-				delete cover;
-				return;
-			}
-
-			mb_to_wide(post_data.value("artwork_url"), this->art_src);
-			if (this->art_src.empty())
-			{
-				file.save();
-				delete cover;
-				return;
-			}
-
-			this->art_src = std::regex_replace(this->art_src, std::wregex(L"large."), L"original.");
+			file.save();
+			delete cover;
+			return;
 		}
-		
-		// Downloading and applying cover art
 
-		std::string mb_url(this->art_src.size(), 0);
-		WideCharToMultiByte(CP_UTF8, 0, this->art_src.c_str(), -1, mb_url.data(), mb_url.size(), nullptr, nullptr);
-
-		const cpr::Response r = cpr::Get(cpr::Url{ mb_url });
+		const cpr::Response r = cpr::Get(cpr::Url{ cover_url });
 		if (request_failed(r))
 		{
 			err::log_net(r);
@@ -190,6 +238,50 @@ bool sc_upload::get_track_ids(const Json& data)
 	return true;
 }
 
+bool sc_upload::parse_manifest(const std::string& raw_data, std::string& buffer) const
+{
+	// This is used to download .m3u/.m3u8 files. Both file types are similar, 
+	// with each containing an array of links that lead to file segments, which 
+	// you must append to eachother in the order of which the links are provided.
+	// Any HLS media transcoding will provide this type of file, and each link will 
+	// expire relatively quick, so you must programatically download them in the 
+	// case of SoundCloud.
+
+	std::istringstream iss(raw_data);
+	std::string line;
+
+	while (std::getline(iss, line))
+	{
+		if (this->f.is_m4a_media && line.starts_with("#EXT-X-MAP:URI="))
+		{
+			line.erase(0, line.find_first_of('\"') + 1);
+			line.pop_back();
+		}
+		else if (line.starts_with("#EXTINF"))
+		{
+			std::getline(iss, line);
+		}
+		else continue;
+
+		const cpr::Response r = cpr::Get(cpr::Url{ line });
+		if (request_failed(r))
+		{
+			err::log_net(r);
+			return false;
+		}
+
+		buffer += r.text;
+	}
+
+	if (buffer.empty())
+	{
+		err::log("failed to parse HLS manifest");
+		return false;
+	}
+
+	return true;
+}
+
 bool sc_upload::get_streaming_url(const Json& json)
 {
 	auto list = json.value("media", Json{});
@@ -206,20 +298,41 @@ bool sc_upload::get_streaming_url(const Json& json)
 		return false;
 	}
 
-	bool found = false;
-	bool hls = false;
+	bool found = false, is_hls = false, progressive_found = false;
 
 	for (const auto& transcoding : list)
 	{
-		const auto format = transcoding["format"];
-		hls = format["protocol"] == "hls";
+		// AAC transcodings are lossless, and provide .m4a files rather than .mp3.
+		// Unfortunately, Spotify can't play these files. 
 
-		if ((format["protocol"] == "progressive") || (hls && format["mime_type"] == "audio/mpeg"))
+		if (transcoding["preset"] != "aac_160k")
 		{
-			this->streaming_url = transcoding["url"].get<std::string>() + "?client_id=" + cfg::client_id;
-			found = true;
+			if (!progressive_found)
+			{
+				const auto format = transcoding["format"];
+				const bool hls = format["protocol"] == "hls";
 
-			if (!hls) break;
+				if (!hls || format["mime_type"] == "audio/mpeg")
+				{
+					is_hls = hls;
+
+					if (!hls)
+					{
+						progressive_found = true;
+					}
+
+					this->streaming_url = transcoding["url"].get<std::string>() + "?client_id=" + cfg::client_id;
+					found = true;
+				}
+			}
+		}
+		else if (cfg::f.get_aac_transcoding)
+		{
+			this->streaming_url  = transcoding["url"].get<std::string>() + "?client_id=" + cfg::client_id;
+			this->f.is_m4a_media = true;
+
+			found = true;
+			break;
 		}
 	}
 
@@ -229,9 +342,9 @@ bool sc_upload::get_streaming_url(const Json& json)
 		return false;
 	}
 
-	if (hls)
+	if (is_hls)
 	{
-		this->f.is_hls_media = true;
+		this->f.is_hls_mpeg = true;
 	}
 
 	return true;
@@ -259,30 +372,30 @@ bool sc_upload::download_track()
 	
 	// Finalizing MP3 download
 
-	const char* raw_mp3 = nullptr;
-	size_t mp3_size = 0;
+	const char* raw_audio = nullptr;
+	size_t audio_size = 0;
 
 	// This must be outside of the if-else scope below or else raw_mp3 will hold a dangling pointer for HLS downloads.
 	// If one std::string buffer was used for HLS and progressive it would require copying the entire mp3 across memory.
 	std::string raw_hls_result;
 
-	if (this->f.is_hls_media)
+	if (this->f.is_hls_mpeg || this->f.is_m4a_media)
 	{
-		if (!download_m3u(r.text, raw_hls_result))
+		if (!this->parse_manifest(r.text, raw_hls_result))
 			return false;
 
-		raw_mp3  = raw_hls_result.data();
-		mp3_size = raw_hls_result.size();
+		raw_audio  = raw_hls_result.data();
+		audio_size = raw_hls_result.size();
 	}
 	else
 	{
-		raw_mp3  = r.text.data();
-		mp3_size = r.text.size();
+		raw_audio  = r.text.data();
+		audio_size = r.text.size();
 	}
 
 	// Writing MP3 to disk
 
-	const std::wstring path = cfg::audio_out_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".mp3";
+	const std::wstring path = cfg::audio_out_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + (this->f.is_m4a_media ? L".m4a" : L".mp3");
 
 	std::ofstream mp3_file(path, std::ios::binary | std::ios::trunc);
 	if (mp3_file.fail())
@@ -291,12 +404,19 @@ bool sc_upload::download_track()
 		return false;
 	}
 
-	mp3_file.write(raw_mp3, mp3_size);
+	mp3_file.write(raw_audio, audio_size);
 	mp3_file.close();
 
 	// Adding ID3v2 tag
 
-	this->add_tag(path);
+	if (this->f.is_m4a_media)
+	{
+		this->add_m4a_tag(path);
+	}
+	else
+	{
+		this->add_mp3_tag(path);
+	}
 
 	return true;
 }
@@ -315,7 +435,8 @@ bool sc_upload::download_cover() const
 		return false;
 	}
 
-	const std::wstring path = cfg::image_out_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".jpg";
+	const std::wstring& file_name = cfg::g_track_data.image_file_name.empty() ? this->title : cfg::g_track_data.image_file_name;
+	const std::wstring path = cfg::image_out_dir + std::regex_replace(file_name, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".jpg";
 
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (file.fail())

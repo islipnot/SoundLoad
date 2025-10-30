@@ -15,7 +15,8 @@ private:
 		USHORT error_occured : 1; // An error occured in the constructor
 		USHORT is_track      : 1; // Object represents a singular track
 		USHORT is_album      : 1; // Object represents an album or playlist
-		USHORT is_hls_media  : 1; // Streaming URL links an HLS transcoding (.m3u file)
+		USHORT is_m4a_media  : 1; // Lossless media transcoding (.m3u8 -> .m4a)
+		USHORT is_hls_mpeg   : 1; // HLS media transcoding (.m3u -> .mp3)
 	};
 
 	//
@@ -35,11 +36,17 @@ private:
 
 	bool download_cover() const;
 
+	bool parse_manifest(const std::string& raw_data, std::string& buffer) const;
+
 	bool get_streaming_url(const Json& data);
 
 	bool get_track_ids(const Json& data);
 
-	void add_tag(const std::wstring& path);
+	bool get_cover_link(std::string& buffer) const;
+
+	void add_m4a_tag(const std::wstring& path) const;
+
+	void add_mp3_tag(const std::wstring& path) const;
 
 public:
 

@@ -88,19 +88,21 @@ namespace cfg
 			case hash(L"save"):    { cfg::f.save_config            = true; break; } // Save applicable variables to config
 			case hash(L"art"):     { cfg::f.download_art_seperate  = true; break; } // Downloads cover art independently
 			case hash(L"n-art"):   { cfg::f.disable_art_download   = true; break; } // Prevents independent cover art download
-			case hash(L"audio"):   { cfg::f.download_audio         = true; break; } // Enables MP3 downloading
-			case hash(L"n-audio"): { cfg::f.disable_audio_download = true; break; } // Disables MP3 downloading
+			case hash(L"audio"):   { cfg::f.download_audio         = true; break; } // Enables audio downloading
+			case hash(L"n-audio"): { cfg::f.disable_audio_download = true; break; } // Disables audio downloading
 			case hash(L"pvars"):   { cfg::f.add_to_path            = true; break; } // Add program to PATH variables
+			case hash(L"aac"):     { cfg::f.get_aac_transcoding    = true; break; } // Allows lossless downloads
+			case hash(L"n-aac"):   { cfg::f.no_aac_transcodings    = true; break; } // Disables lossless downloads
 
 				// Config data arguments
 
-			case hash(L"img-name"): { set_arg_var(next_arg, cfg::g_track_data.image_file_name); ++i; break; } // Downloaded cover art file name
-			case hash(L"mp3-name"): { set_arg_var(next_arg, cfg::g_track_data.audio_file_name); ++i; break; } // Downloaded MP3 file name
-			case hash(L"img-dst"):  { set_arg_var(next_arg, cfg::image_out_dir);                ++i; break; } // Cover art download directory
-			case hash(L"mp3-dst"):  { set_arg_var(next_arg, cfg::audio_out_dir);                ++i; break; } // MP3 download directory
-			case hash(L"img-src"):  { set_arg_var(next_arg, cfg::image_src);                    ++i; break; } // MP3 cover art source
+			case hash(L"img-name"):   { set_arg_var(next_arg, cfg::g_track_data.image_file_name); ++i; break; } // Downloaded cover art file name
+			case hash(L"audio-name"): { set_arg_var(next_arg, cfg::g_track_data.audio_file_name); ++i; break; } // Downloaded audio file name
+			case hash(L"img-dst"):    { set_arg_var(next_arg, cfg::image_out_dir);                ++i; break; } // Cover art download directory
+			case hash(L"audio-dst"):  { set_arg_var(next_arg, cfg::audio_out_dir);                ++i; break; } // Audio download directory
+			case hash(L"img-src"):    { set_arg_var(next_arg, cfg::image_src);                    ++i; break; } // Audio cover art source 
 					
-				// MP3 ID3v2 data arguments
+				// Audio tag arguments
 
 			case hash(L"title"):    { set_arg_var(next_arg, cfg::g_track_data.title);           ++i; break; }
 			case hash(L"comment"):  { set_arg_var(next_arg, cfg::g_track_data.comments);        ++i; break; }
@@ -206,6 +208,11 @@ namespace cfg
 		{
 			cfg::f.download_art_seperate = true;
 		}
+
+		if (!cfg::aac_flags_set() && data.get_aac_transcoding)
+		{
+			cfg::f.get_aac_transcoding = true;
+		}
 	}
 
 	void save_config(cfg_format& data)
@@ -233,6 +240,11 @@ namespace cfg
 		if (cfg::art_flags_set())
 		{
 			data.get_track_art = cfg::f.download_art_seperate;
+		}
+
+		if (cfg::aac_flags_set())
+		{
+			data.get_aac_transcoding = cfg::f.get_aac_transcoding;
 		}
 	}
 
