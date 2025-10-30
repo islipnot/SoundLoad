@@ -72,7 +72,7 @@ static bool handle_config()
 	return true;
 }
 
-int main(int argc, char* argv[])
+int wmain(int argc, wchar_t* argv[])
 {
 	// Parsing arguments
 
@@ -106,12 +106,12 @@ int main(int argc, char* argv[])
 	}
 
 	{
-		auto fix_path = [](std::string& path)
+		auto fix_path = [](std::wstring& path)
 			{
 				if (!path.empty())
 				{
-					std::replace(path.begin(), path.end(), '\\', '/');
-					if (path.back() != '/') path.push_back('/');
+					std::replace(path.begin(), path.end(), L'\\', L'/');
+					if (path.back() != L'/') path.push_back(L'/');
 				}
 			};
 

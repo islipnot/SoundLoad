@@ -49,17 +49,17 @@ public:
 
 	upload_flags_t f = {};
 
-	std::string art_src;
-	std::string artwork_url;
-	std::string artist_pfp_url;
+	std::wstring art_src;
+	std::string  artwork_url;
+	std::string  artist_pfp_url;
 
 	std::wstring description;
 	std::wstring genre;
 	std::wstring album;
 	std::wstring artist;
 	std::wstring title;
-	int          year = -1;
-	int          num  = -1;
+	UINT         year = 0u;
+	UINT         num  = 0u;
 
 	int id = 0;
 
@@ -67,7 +67,7 @@ public:
 	//// PUBLIC MEMBER FUNCTIONS
 	//
 
-	sc_upload(std::string url);
+	sc_upload(std::wstring url);
 
 	//
 	//// HELPERS

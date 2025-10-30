@@ -5,8 +5,8 @@
 struct cfg_format
 {
 	std::string cid;
-	std::string art_out_dir;
-	std::string track_out_dir;
+	std::wstring art_out_dir;
+	std::wstring track_out_dir;
 	bool get_track_audio = true;
 	bool get_track_art = false;
 };
@@ -17,19 +17,19 @@ struct track_data
 {
 	// Output data
 
-	std::string audio_file_name; // Name for downloaded MP3(s). Derived from track title by default.
-	std::string image_file_name; // Name for downloaded cover art. Derived from track title by default.
+	std::wstring audio_file_name; // Name for downloaded MP3(s). Derived from track title by default.
+	std::wstring image_file_name; // Name for downloaded cover art. Derived from track title by default.
 
 	// MP3 ID3v2 data
 
-	std::string title;
-	std::string comments;
-	std::string contrib_artists; // contributing artists
-	std::string album_artists;   // album artist
-	std::string album;
-	std::string genre;
-	int         number = -1; // track number (for albums)
-	int         year   = -1;
+	std::wstring title;
+	std::wstring comments;
+	std::wstring contrib_artists; // contributing artists
+	std::wstring album_artists;   // album artist
+	std::wstring album;
+	std::wstring genre;
+	UINT         number = 0u; // track number (for albums)
+	UINT         year   = 0u;
 };
 
 // CONFIG DATA
@@ -63,9 +63,9 @@ namespace cfg
 	inline cfg_flags_t f = {}; // Flags
 
 	inline std::string  client_id;     // SoundCloud client ID
-	inline std::string  audio_out_dir; // MP3 download directory
-	inline std::string  image_out_dir; // Cover art download directory
-	inline std::string  image_src;     // MP3 cover art source (file path, soundcloud track link, or image link)
+	inline std::wstring audio_out_dir; // MP3 download directory
+	inline std::wstring image_out_dir; // Cover art download directory
+	inline std::wstring image_src;     // MP3 cover art source (file path, soundcloud track link, or image link)
 	inline std::wstring program_dir;   // SoundCloud.exe directory (used to open config and add to PATH variables)
 
 	inline track_data g_track_data = {}; // Track data specified in arguments, mostly for singular MP3 downloads
@@ -74,7 +74,7 @@ namespace cfg
 	//// FORWARD DECLARATIONS
 	//
 
-	bool parse_arguments(int argc, char* argv[]);
+	bool parse_arguments(int argc, wchar_t* argv[]);
 
 	void read_config(const cfg_format& data);
 

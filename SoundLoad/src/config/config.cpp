@@ -12,7 +12,7 @@ namespace cfg
 		// to be added
 	}
 
-	static void set_arg_var(const char* src, std::string& dst)
+	static void set_arg_var(PCWSTR src, std::wstring& dst)
 	{
 		if (src)
 		{
@@ -24,13 +24,13 @@ namespace cfg
 		}
 	}
 
-	static void set_arg_var(const char* src, int& dst)
+	static void set_arg_var(PCWSTR src, UINT& dst)
 	{
 		if (src)
 		{
 			try
 			{
-				dst = std::stoi(src);
+				dst = std::stoul(src);
 			}
 			catch (...)
 			{
@@ -43,7 +43,7 @@ namespace cfg
 		}
 	}
 
-	bool parse_arguments(int argc, char* argv[])
+	bool parse_arguments(int argc, wchar_t* argv[])
 	{
 		// Checking arg count
 
@@ -55,11 +55,11 @@ namespace cfg
 
 		// Checking if first argument (link required for any downloads)
 		
-		if (_strnicmp(argv[1], "https://soundcloud.com/", 23) != 0)
+		if (_wcsnicmp(argv[1], L"https://soundcloud.com/", 23) != 0)
 		{
 			cfg::f.no_link_provided = true;
 
-			if (!strcmp(argv[1], "-?"))
+			if (!wcscmp(argv[1], L"-?"))
 			{
 				show_usage();
 				return false;
@@ -74,49 +74,58 @@ namespace cfg
 
 			if (argv[i][0] != '-')
 			{
-				err::log("unrecognized argument \"{}\"", argv[i]);
+				err::log(L"unrecognized argument \"{}\"", argv[i]);
 				return false;
 			}
 
-			const char* next_arg = nullptr;
+			PCWSTR next_arg = nullptr;
 			if (i + 1 < argc) next_arg = argv[i + 1];
 
 			switch (hash_rt(&argv[i][1]))
 			{
 				// Flag arguments
 
-			case hash("save"):    { cfg::f.save_config            = true; break; } // Save applicable variables to config
-			case hash("art"):     { cfg::f.download_art_seperate  = true; break; } // Downloads cover art independently
-			case hash("n-art"):   { cfg::f.disable_art_download   = true; break; } // Prevents independent cover art download
-			case hash("audio"):   { cfg::f.download_audio         = true; break; } // Enables MP3 downloading
-			case hash("n-audio"): { cfg::f.disable_audio_download = true; break; } // Disables MP3 downloading
-			case hash("pvars"):   { cfg::f.add_to_path            = true; break; } // Add program to PATH variables
+			case hash(L"save"):    { cfg::f.save_config            = true; break; } // Save applicable variables to config
+			case hash(L"art"):     { cfg::f.download_art_seperate  = true; break; } // Downloads cover art independently
+			case hash(L"n-art"):   { cfg::f.disable_art_download   = true; break; } // Prevents independent cover art download
+			case hash(L"audio"):   { cfg::f.download_audio         = true; break; } // Enables MP3 downloading
+			case hash(L"n-audio"): { cfg::f.disable_audio_download = true; break; } // Disables MP3 downloading
+			case hash(L"pvars"):   { cfg::f.add_to_path            = true; break; } // Add program to PATH variables
 
 				// Config data arguments
 
-			case hash("cid"):      { set_arg_var(next_arg, cfg::client_id);                    ++i; break; } // Client ID
-			case hash("img-name"): { set_arg_var(next_arg, cfg::g_track_data.image_file_name); ++i; break; } // Downloaded cover art file name
-			case hash("mp3-name"): { set_arg_var(next_arg, cfg::g_track_data.audio_file_name); ++i; break; } // Downloaded MP3 file name
-			case hash("img-dst"):  { set_arg_var(next_arg, cfg::image_out_dir);                ++i; break; } // Cover art download directory
-			case hash("mp3-dst"):  { set_arg_var(next_arg, cfg::audio_out_dir);                ++i; break; } // MP3 download directory
-			case hash("img-src"):  { set_arg_var(next_arg, cfg::image_src);                    ++i; break; } // MP3 cover art source
-								
+			case hash(L"img-name"): { set_arg_var(next_arg, cfg::g_track_data.image_file_name); ++i; break; } // Downloaded cover art file name
+			case hash(L"mp3-name"): { set_arg_var(next_arg, cfg::g_track_data.audio_file_name); ++i; break; } // Downloaded MP3 file name
+			case hash(L"img-dst"):  { set_arg_var(next_arg, cfg::image_out_dir);                ++i; break; } // Cover art download directory
+			case hash(L"mp3-dst"):  { set_arg_var(next_arg, cfg::audio_out_dir);                ++i; break; } // MP3 download directory
+			case hash(L"img-src"):  { set_arg_var(next_arg, cfg::image_src);                    ++i; break; } // MP3 cover art source
+					
 				// MP3 ID3v2 data arguments
 
-			case hash("title"):    { set_arg_var(next_arg, cfg::g_track_data.title);           ++i; break; }
-			case hash("comment"):  { set_arg_var(next_arg, cfg::g_track_data.comments);        ++i; break; }
-			case hash("artists"):  { set_arg_var(next_arg, cfg::g_track_data.contrib_artists); ++i; break; } // Contributing artists
-			case hash("a-artist"): { set_arg_var(next_arg, cfg::g_track_data.album_artists);   ++i; break; } // Album artist
-			case hash("album"):    { set_arg_var(next_arg, cfg::g_track_data.album);           ++i; break; }
-			case hash("genre"):    { set_arg_var(next_arg, cfg::g_track_data.genre);           ++i; break; }
-			case hash("num"):      { set_arg_var(next_arg, cfg::g_track_data.number);          ++i; break; }
-			case hash("year"):     { set_arg_var(next_arg, cfg::g_track_data.year);            ++i; break; }
+			case hash(L"title"):    { set_arg_var(next_arg, cfg::g_track_data.title);           ++i; break; }
+			case hash(L"comment"):  { set_arg_var(next_arg, cfg::g_track_data.comments);        ++i; break; }
+			case hash(L"artists"):  { set_arg_var(next_arg, cfg::g_track_data.contrib_artists); ++i; break; } // Contributing artists
+			case hash(L"a-artist"): { set_arg_var(next_arg, cfg::g_track_data.album_artists);   ++i; break; } // Album artist
+			case hash(L"album"):    { set_arg_var(next_arg, cfg::g_track_data.album);           ++i; break; }
+			case hash(L"genre"):    { set_arg_var(next_arg, cfg::g_track_data.genre);           ++i; break; }
+			case hash(L"num"):      { set_arg_var(next_arg, cfg::g_track_data.number);          ++i; break; }
+			case hash(L"year"):     { set_arg_var(next_arg, cfg::g_track_data.year);            ++i; break; }
+
+				// Extra
+
+			case hash(L"cid"):
+			{
+				// Warnings here can be ignored, they're wrong. Stupid compiler.
+				cfg::client_id.resize(lstrlenW(next_arg)); // this is really only in its own part cuz its ugly asf
+				WideCharToMultiByte(CP_UTF8, 0, next_arg, -1, cfg::client_id.data(), static_cast<int>(cfg::client_id.size()), nullptr, nullptr);
+				++i; break;
+			}
 
 				// Invalid arguments
 
 			default:
 			{
-				err::log("invalid argument \"{}\"", argv[i]);
+				err::log(L"invalid argument \"{}\"", argv[i]);
 				return false;
 			}
 			}
@@ -125,13 +134,13 @@ namespace cfg
 
 			if (cfg::f.no_arg_data_provided)
 			{
-				err::log("no variable provided for argument \"{}\"", argv[i - 1]);
+				err::log(L"no variable provided for argument \"{}\"", argv[i - 1]);
 				return false;
 			}
 
 			if (cfg::f.invalid_data_provided)
 			{
-				err::log("non-numeric or out of range variable (\"{}\") provided for argument \"{}\"", next_arg, argv[i - 1]);
+				err::log(L"non-numeric or out of range variable (\"{}\") provided for argument \"{}\"", next_arg, argv[i - 1]);
 				return false;
 			}
 		}
@@ -146,7 +155,7 @@ namespace cfg
 			{
 				cfg::f.cover_src_is_path = true;
 			}
-			else if (cfg::image_src.starts_with("https://soundcloud.com/"))
+			else if (cfg::image_src.starts_with(L"https://soundcloud.com/"))
 			{
 				cfg::f.cover_src_is_sc_link = true;
 			}
@@ -158,7 +167,7 @@ namespace cfg
 
 		if (!GetModuleFileNameW(nullptr, program_path, MAX_PATH))
 		{
-			err::log_ex("failed to get soundload path");
+			err::log_ex("failed to get SoundLoad path");
 			return false;
 		}
 
@@ -173,14 +182,20 @@ namespace cfg
 
 	void read_config(const cfg_format& data)
 	{
-		auto read_str = [](const std::string& src, std::string& dst) 
-			{ 
-				if (!src.empty() && dst.empty()) dst = src; 
-			};
+		if (!data.cid.empty() && cfg::client_id.empty())
+		{
+			cfg::client_id = data.cid;
+		}
 
-		read_str(data.cid,           cfg::client_id);
-		read_str(data.art_out_dir,   cfg::image_out_dir);
-		read_str(data.track_out_dir, cfg::audio_out_dir);
+		if (!data.art_out_dir.empty() && cfg::image_out_dir.empty())
+		{
+			cfg::image_out_dir = data.art_out_dir;
+		}
+
+		if (!data.track_out_dir.empty() && cfg::audio_out_dir.empty())
+		{
+			cfg::audio_out_dir = data.track_out_dir;
+		}
 
 		if (!cfg::audio_flags_set() && !data.get_track_audio)
 		{
@@ -195,14 +210,20 @@ namespace cfg
 
 	void save_config(cfg_format& data)
 	{
-		auto save_str = [](std::string& dst, const std::string& src)
-			{
-				if (!src.empty()) dst = src;
-			};
+		if (!cfg::client_id.empty())
+		{
+			data.cid = cfg::client_id;
+		}
 
-		save_str(data.cid,           cfg::client_id);
-		save_str(data.art_out_dir,   cfg::image_out_dir);
-		save_str(data.track_out_dir, cfg::audio_out_dir);
+		if (!cfg::image_out_dir.empty())
+		{
+			data.art_out_dir = cfg::image_out_dir;
+		}
+
+		if (!cfg::audio_out_dir.empty())
+		{
+			data.track_out_dir = cfg::audio_out_dir;
+		}
 
 		if (cfg::audio_flags_set())
 		{

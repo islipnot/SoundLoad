@@ -49,18 +49,21 @@ static bool download_m3u(const std::string& raw_data, std::string& mp3_buffer)
 	return true;
 }
 
-static bool resolve_post(std::string& url, Json& buffer)
+static bool resolve_post(std::wstring& url, Json& buffer)
 {
 	// Erasing tracking data from link
 
-	if (url.find('?') != std::string::npos)
+	if (url.find(L'?') != std::string::npos)
 	{
-		url.erase(url.find_first_of('?'));
+		url.erase(url.find_first_of(L'?'));
 	}
 
 	// Resolving post
 
-	const cpr::Response r = cpr::Get(cpr::Url{ "https://api-v2.soundcloud.com/resolve?url=" + url + "&client_id=" + cfg::client_id });
+	std::string mb_url(url.size(), 0);
+	WideCharToMultiByte(CP_UTF8, 0, url.c_str(), -1, mb_url.data(), mb_url.size(), nullptr, nullptr);
+
+	const cpr::Response r = cpr::Get(cpr::Url{ "https://api-v2.soundcloud.com/resolve?url=" + mb_url + "&client_id=" + cfg::client_id });
 	if (request_failed(r))
 	{
 		err::log_net(r);
@@ -105,7 +108,7 @@ void sc_upload::add_tag(const std::wstring& path)
 		std::ifstream cover_file(cfg::image_src, std::ios::binary | std::ios::ate);
 		if (cover_file.fail())
 		{
-			err::log("failed to open cover art file \"{}\"", cfg::image_src);
+			err::log(L"failed to open cover art file \"{}\"", cfg::image_src);
 			file.save();
 			delete cover;
 			return;
@@ -138,7 +141,7 @@ void sc_upload::add_tag(const std::wstring& path)
 				return;
 			}
 
-			this->art_src = post_data.value("artwork_url");
+			mb_to_wide(post_data.value("artwork_url"), this->art_src);
 			if (this->art_src.empty())
 			{
 				file.save();
@@ -146,12 +149,15 @@ void sc_upload::add_tag(const std::wstring& path)
 				return;
 			}
 
-			this->art_src = std::regex_replace(this->art_src, std::regex("-large."), "-original.");
+			this->art_src = std::regex_replace(this->art_src, std::wregex(L"large."), L"original.");
 		}
 		
 		// Downloading and applying cover art
 
-		const cpr::Response r = cpr::Get(cpr::Url{ this->art_src });
+		std::string mb_url(this->art_src.size(), 0);
+		WideCharToMultiByte(CP_UTF8, 0, this->art_src.c_str(), -1, mb_url.data(), mb_url.size(), nullptr, nullptr);
+
+		const cpr::Response r = cpr::Get(cpr::Url{ mb_url });
 		if (request_failed(r))
 		{
 			err::log_net(r);
@@ -274,13 +280,9 @@ bool sc_upload::download_track()
 		mp3_size = r.text.size();
 	}
 
-	// Getting MP3 output path
-
-	std::wstring path;
-	mb_to_wide(cfg::audio_out_dir, path);
-	path += std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".mp3";
-
 	// Writing MP3 to disk
+
+	const std::wstring path = cfg::audio_out_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".mp3";
 
 	std::ofstream mp3_file(path, std::ios::binary | std::ios::trunc);
 	if (mp3_file.fail())
@@ -313,9 +315,7 @@ bool sc_upload::download_cover() const
 		return false;
 	}
 
-	std::wstring path;
-	mb_to_wide(cfg::image_out_dir, path);
-	path += std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".jpg";
+	const std::wstring path = cfg::image_out_dir + std::regex_replace(this->title, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".jpg";
 
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (file.fail())
@@ -330,7 +330,7 @@ bool sc_upload::download_cover() const
 	return true;
 }
 
-sc_upload::sc_upload(std::string url)
+sc_upload::sc_upload(std::wstring url)
 {
 	// Resolving post
 
@@ -341,19 +341,39 @@ sc_upload::sc_upload(std::string url)
 		return;
 	}
 
-	// Getting artwork URL & title
+	// Getting artwork URL & post title
 	
 	{
-		mb_to_wide(cfg::g_track_data.title.empty() ? post_data.value("title") : cfg::g_track_data.title, this->title);
-		this->title.resize(lstrlenW(this->title.c_str()));
+		// Getting title
+
+		if (cfg::g_track_data.title.empty())
+		{
+			mb_to_wide(post_data.value("title"), this->title);
+			this->title.resize(lstrlenW(this->title.c_str()));
+		}
+		else
+		{
+			this->title = cfg::g_track_data.title;
+		}
+
+		// Getting artwork URL
 
 		this->artwork_url = post_data.value("artwork_url", post_data.value("avatar_url"));
 		if (!this->artwork_url.empty())
 		{
-			this->artwork_url = std::regex_replace(this->artwork_url, std::regex("-large."), "-original.");
+			this->artwork_url = std::regex_replace(this->artwork_url, std::regex("large."), "original.");
 		}
 
-		this->art_src = cfg::image_src.empty() ? this->artwork_url : cfg::image_src;
+		// Getting MP3 artwork source
+
+		if (cfg::image_src.empty())
+		{
+			mb_to_wide(this->artwork_url, this->art_src);
+		}
+		else
+		{
+			this->art_src = cfg::image_src;
+		}
 
 		if (cfg::cover_art_only())
 		{
@@ -385,7 +405,7 @@ sc_upload::sc_upload(std::string url)
 		}
 		else
 		{
-			mb_to_wide(cfg::g_track_data.album, this->album);
+			this->album = cfg::g_track_data.album;
 		}
 	}
 
@@ -394,7 +414,7 @@ sc_upload::sc_upload(std::string url)
 	{
 		// Specified comments
 
-		mb_to_wide(cfg::g_track_data.comments, this->description);
+		this->description = cfg::g_track_data.comments;
 
 		// Extra comments
 
@@ -425,19 +445,33 @@ sc_upload::sc_upload(std::string url)
 	// Getting genre and year
 
 	{
-		mb_to_wide(cfg::g_track_data.genre.empty() ? post_data.value("genre") : cfg::g_track_data.genre, this->genre);
+		// Getting genre
 
-		this->year = std::stoi(post_data["created_at"].get<std::string>());
+		if (cfg::g_track_data.genre.empty())
+		{
+			mb_to_wide(post_data.value("genre"), this->genre);
+		}
+		else
+		{
+			this->genre = cfg::g_track_data.genre;
+		}
+
+		// Getting year
+
+		if (cfg::g_track_data.year)
+		{
+			this->year = cfg::g_track_data.year;
+		}
+		else
+		{
+			this->year = std::stoul(post_data["created_at"].get<std::string>());
+		}
 	}
 
 	// Getting artist
 
 	{
-		if (!cfg::g_track_data.contrib_artists.empty())
-		{
-			mb_to_wide(cfg::g_track_data.contrib_artists, this->artist);
-		}
-		else
+		if (cfg::g_track_data.contrib_artists.empty())
 		{
 			std::string mb_artist;
 
@@ -450,6 +484,10 @@ sc_upload::sc_upload(std::string url)
 			}
 
 			mb_to_wide(mb_artist, this->artist);
+		}
+		else
+		{
+			this->artist = cfg::g_track_data.contrib_artists;
 		}
 	}
 	

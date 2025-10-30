@@ -74,6 +74,14 @@ c:>soundload https://soundcloud.com/sellasouls/bdayy-sexxx -n-audio -art -save
 ```
 
 ## Notes
-- Unicode characters such as emojis are not handled on command line (*for now*), though they are properly parsed from SoundCloud metadata.
+- `nlohmann::json::value` has multiple modifications in this repo - check `pch.hpp` for more info.
+- There is full unicode support both on command line and in parsing metadata, though it's tedious to 
+  actually get proper encoding on command line in Windows.
+- In the ID3v2 `comments` property of downloaded MP3's, the program will store the exact timestamp 
+  of the upload, the original description, and the original tags. You can easily add on to this list 
+  in `site_api.cpp/sc_upload::sc_upload()` by using the `add_comment` lambda.
 - The following characters will be replaced with an underscore in file names: `< > : " \ | ? *`
 - Go+ songs cannot be downloaded.
+- `cfg.json` must not be modified manually for now. The json library I'm using doesn't have std::wstring
+  support, causing it to store such types in extremely stupid ways. Only touch if you know what you're doing.
+  This will be fixed later.
