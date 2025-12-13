@@ -435,7 +435,7 @@ bool sc_upload::download_cover() const
 		return false;
 	}
 
-	const std::wstring& file_name = cfg::g_track_data.image_file_name.empty() ? this->title : cfg::g_track_data.image_file_name;
+	const std::wstring& file_name = cfg::g_data.image_file_name.empty() ? this->title : cfg::g_data.image_file_name;
 	const std::wstring path = cfg::image_out_dir + std::regex_replace(file_name, std::wregex(L"[<>:\"/\\|?*]"), L"_") + L".jpg";
 
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
@@ -467,14 +467,14 @@ sc_upload::sc_upload(std::wstring url)
 	{
 		// Getting title
 
-		if (cfg::g_track_data.title.empty())
+		if (cfg::g_data.title.empty())
 		{
 			mb_to_wide(post_data.value("title"), this->title);
 			this->title.resize(lstrlenW(this->title.c_str()));
 		}
 		else
 		{
-			this->title = cfg::g_track_data.title;
+			this->title = cfg::g_data.title;
 		}
 
 		// Getting artwork URL
@@ -505,7 +505,7 @@ sc_upload::sc_upload(std::wstring url)
 	// Getting album (order: cfg::g_track_data.album -> first existing album via SoundCloud API -> title)
 
 	{
-		if (cfg::g_track_data.album.empty())
+		if (cfg::g_data.album.empty())
 		{
 			const cpr::Response r = cpr::Get(cpr::Url{ "https://api-v2.soundcloud.com/tracks/" + std::to_string(post_data["id"].get<int>()) + "/albums?client_id=" + cfg::client_id });
 
@@ -526,7 +526,7 @@ sc_upload::sc_upload(std::wstring url)
 		}
 		else
 		{
-			this->album = cfg::g_track_data.album;
+			this->album = cfg::g_data.album;
 		}
 	}
 
@@ -535,7 +535,7 @@ sc_upload::sc_upload(std::wstring url)
 	{
 		// Specified comments
 
-		this->description = cfg::g_track_data.comments;
+		this->description = cfg::g_data.comments;
 
 		// Extra comments
 
@@ -568,20 +568,20 @@ sc_upload::sc_upload(std::wstring url)
 	{
 		// Getting genre
 
-		if (cfg::g_track_data.genre.empty())
+		if (cfg::g_data.genre.empty())
 		{
 			mb_to_wide(post_data.value("genre"), this->genre);
 		}
 		else
 		{
-			this->genre = cfg::g_track_data.genre;
+			this->genre = cfg::g_data.genre;
 		}
 
 		// Getting year
 
-		if (cfg::g_track_data.year)
+		if (cfg::g_data.year)
 		{
-			this->year = cfg::g_track_data.year;
+			this->year = cfg::g_data.year;
 		}
 		else
 		{
@@ -592,7 +592,7 @@ sc_upload::sc_upload(std::wstring url)
 	// Getting artist
 
 	{
-		if (cfg::g_track_data.contrib_artists.empty())
+		if (cfg::g_data.contrib_artists.empty())
 		{
 			std::string mb_artist;
 
@@ -608,7 +608,7 @@ sc_upload::sc_upload(std::wstring url)
 		}
 		else
 		{
-			this->artist = cfg::g_track_data.contrib_artists;
+			this->artist = cfg::g_data.contrib_artists;
 		}
 	}
 	

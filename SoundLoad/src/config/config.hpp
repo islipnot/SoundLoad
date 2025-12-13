@@ -71,7 +71,7 @@ namespace cfg
 	inline std::wstring image_src;     // Audio cover art source (file path, soundcloud track link, or image link)
 	inline std::wstring program_dir;   // SoundCloud.exe directory (used to open config and add to PATH variables)
 
-	inline track_data g_track_data = {}; // Track data specified in arguments, mostly for singular audio downloads
+	inline track_data g_data = {}; // Track data specified in arguments, mostly for singular audio downloads
 
 	//
 	//// FORWARD DECLARATIONS

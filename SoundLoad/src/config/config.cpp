@@ -9,7 +9,37 @@ namespace cfg
 
 	static __forceinline void show_usage()
 	{
-		// to be added
+		std::cout << "[*] ABOUT THIS PROGRAM\n";
+		std::cout << "All valid arguments are listed below. You MUST surround any arguments with spaces in quotes.\n";
+		std::cout << "Source: https://github.com/islipnot/SoundLoad\n";
+
+		std::cout << "\n[+] CONFIGURATION\n";
+		std::cout << "-cid <client_id>       ; [SAVEABLE] sets the client ID\n";
+		std::cout << "-audio-dst <directory> ; [SAVEABLE] sets the download directory for audio files\n";
+		std::cout << "-img-dst <directory>   ; [SAVEABLE] sets the download directory for images\n";
+		std::cout << "-audio                 ; [SAVEABLE, DEFAULT] enables the download of audio files\n";
+		std::cout << "-n-audio               ; [SAVEABLE] disables the download of audio files\n";
+		std::cout << "-art                   ; [SAVEABLE] enables cover art downloads\n";
+		std::cout << "-n-art                 ; [SAVEABLE, DEFAULT] disables cover art downloads\n";
+		std::cout << "-aac                   ; [SAVEABLE] enables AAC audio download (apple music and spotify wont play these files)\n";
+		std::cout << "-n-aac                 ; [SAVEABLE, DEFAULT] disables AAC audio download (highest bitrate MPEG used)\n";
+		std::cout << "-pvars                 ; adds the program to PATH variables\n";
+		std::cout << "-save                  ; saves applicable arguments to cfg.json\n";
+
+		std::cout << "\n[+] FILES\n";
+		std::cout << "-audio-name <name>     ; the name to be given to the downloaded audio file\n";
+		std::cout << "-img-name <name>       ; the name to be given to the downloaded cover art\n";
+		std::cout << "-img-src <source>      ; the cover art that will be added to the audio (soundcloud track link, image link, or image path)\n";
+		
+		std::cout << "\n[+] METADATA\n";
+		std::cout << "-title <title          ; title property of audio tag (also used for the file name if one is not specified)\n";
+		std::cout << "-comment <comment>     ; comment property of the audio tag (automatically adds the upload date, upload description, and tags)\n";
+		std::cout << "-artists <artists>     ; contributing artists property of audio tag (defaults to artist metadata or uploader)\n";
+		std::cout << "-a-artist <artist>     ; album artist property of audio tag (defaults to album uploader if in an album)\n";
+		std::cout << "-album <album>         ; album property of audio tag (defaults to track name or, if track is in an album, the album name)\n";
+		std::cout << "-genre <genre>         ; genre property of audio tag (defaults to parsed genre from track)\n";
+		std::cout << "-num <track number>    ; track number property of audio tag (defaults to track number in album if track is in an album)\n";
+		std::cout << "-year <year>           ; year property of audio tag (defaults to year of upload date)\n";
 	}
 
 	static void set_arg_var(PCWSTR src, std::wstring& dst)
@@ -85,33 +115,33 @@ namespace cfg
 			{
 				// Flag arguments
 
-			case hash(L"save"):    { cfg::f.save_config            = true; break; } // Save applicable variables to config
-			case hash(L"art"):     { cfg::f.download_art_seperate  = true; break; } // Downloads cover art independently
-			case hash(L"n-art"):   { cfg::f.disable_art_download   = true; break; } // Prevents independent cover art download
-			case hash(L"audio"):   { cfg::f.download_audio         = true; break; } // Enables audio downloading
-			case hash(L"n-audio"): { cfg::f.disable_audio_download = true; break; } // Disables audio downloading
-			case hash(L"pvars"):   { cfg::f.add_to_path            = true; break; } // Add program to PATH variables
-			case hash(L"aac"):     { cfg::f.get_aac_transcoding    = true; break; } // Allows lossless downloads
-			case hash(L"n-aac"):   { cfg::f.no_aac_transcodings    = true; break; } // Disables lossless downloads
+			case hash(L"save"):    { cfg::f.save_config            = true; break; }
+			case hash(L"art"):     { cfg::f.download_art_seperate  = true; break; }
+			case hash(L"n-art"):   { cfg::f.disable_art_download   = true; break; }
+			case hash(L"audio"):   { cfg::f.download_audio         = true; break; }
+			case hash(L"n-audio"): { cfg::f.disable_audio_download = true; break; }
+			case hash(L"pvars"):   { cfg::f.add_to_path            = true; break; }
+			case hash(L"aac"):     { cfg::f.get_aac_transcoding    = true; break; }
+			case hash(L"n-aac"):   { cfg::f.no_aac_transcodings    = true; break; }
 
 				// Config data arguments
 
-			case hash(L"img-name"):   { set_arg_var(next_arg, cfg::g_track_data.image_file_name); ++i; break; } // Downloaded cover art file name
-			case hash(L"audio-name"): { set_arg_var(next_arg, cfg::g_track_data.audio_file_name); ++i; break; } // Downloaded audio file name
-			case hash(L"img-dst"):    { set_arg_var(next_arg, cfg::image_out_dir);                ++i; break; } // Cover art download directory
-			case hash(L"audio-dst"):  { set_arg_var(next_arg, cfg::audio_out_dir);                ++i; break; } // Audio download directory
-			case hash(L"img-src"):    { set_arg_var(next_arg, cfg::image_src);                    ++i; break; } // Audio cover art source 
+			case hash(L"img-name"):   { set_arg_var(next_arg, cfg::g_data.image_file_name); ++i; break; }
+			case hash(L"audio-name"): { set_arg_var(next_arg, cfg::g_data.audio_file_name); ++i; break; }
+			case hash(L"img-dst"):    { set_arg_var(next_arg, cfg::image_out_dir);          ++i; break; }
+			case hash(L"audio-dst"):  { set_arg_var(next_arg, cfg::audio_out_dir);          ++i; break; }
+			case hash(L"img-src"):    { set_arg_var(next_arg, cfg::image_src);              ++i; break; }
 					
 				// Audio tag arguments
 
-			case hash(L"title"):    { set_arg_var(next_arg, cfg::g_track_data.title);           ++i; break; }
-			case hash(L"comment"):  { set_arg_var(next_arg, cfg::g_track_data.comments);        ++i; break; }
-			case hash(L"artists"):  { set_arg_var(next_arg, cfg::g_track_data.contrib_artists); ++i; break; } // Contributing artists
-			case hash(L"a-artist"): { set_arg_var(next_arg, cfg::g_track_data.album_artists);   ++i; break; } // Album artist
-			case hash(L"album"):    { set_arg_var(next_arg, cfg::g_track_data.album);           ++i; break; }
-			case hash(L"genre"):    { set_arg_var(next_arg, cfg::g_track_data.genre);           ++i; break; }
-			case hash(L"num"):      { set_arg_var(next_arg, cfg::g_track_data.number);          ++i; break; }
-			case hash(L"year"):     { set_arg_var(next_arg, cfg::g_track_data.year);            ++i; break; }
+			case hash(L"title"):    { set_arg_var(next_arg, cfg::g_data.title);           ++i; break; }
+			case hash(L"comment"):  { set_arg_var(next_arg, cfg::g_data.comments);        ++i; break; }
+			case hash(L"artists"):  { set_arg_var(next_arg, cfg::g_data.contrib_artists); ++i; break; }
+			case hash(L"a-artist"): { set_arg_var(next_arg, cfg::g_data.album_artists);   ++i; break; }
+			case hash(L"album"):    { set_arg_var(next_arg, cfg::g_data.album);           ++i; break; }
+			case hash(L"genre"):    { set_arg_var(next_arg, cfg::g_data.genre);           ++i; break; }
+			case hash(L"num"):      { set_arg_var(next_arg, cfg::g_data.number);          ++i; break; }
+			case hash(L"year"):     { set_arg_var(next_arg, cfg::g_data.year);            ++i; break; }
 
 				// Extra
 

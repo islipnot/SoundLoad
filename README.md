@@ -49,21 +49,21 @@ A SoundCloud client ID is required for every use unless saved to `cfg.json`.
 By running this, the client ID, audio output dir, and cover art output dir will be saved to cfg.json. Note that creating
 a local files folder for spotify like shown in this example makes importing songs to spotify extremely quick.
 ```
-c:>soundload -cid cWww6yL0wMOcwhn4GEYjHVAg3mwMPBis -audio-dst "c:/spotify local files" -img-dst "c:/cover art" -save
+c:>sl -cid cWww6yL0wMOcwhn4GEYjHVAg3mwMPBis -audio-dst "c:/spotify local files" -img-dst "c:/cover art" -save
 ```
 
 ### Downloading a song
 This will download the song, name the audio file "Extra Stixx", and set the contributing artists to "Pook G, Lul Jody".
 Other metadata will be automatically scraped from the page, but can of course be set manually.
 ```
-c:>soundload https://soundcloud.com/fat-kid-915108395/exrta-stixxs-ft-pook-g-lul -audio-name "Extra Stixx" -artists "Pook G, Lul Jody"
+c:>sl https://soundcloud.com/fat-kid-915108395/exrta-stixxs-ft-pook-g-lul -audio-name "Extra Stixx" -artists "Pook G, Lul Jody"
 ```
 
 ### Downloading an album
 Songs are downloaded in order of last to first, with track numbers automatically parsed. If you want more 
 control over each track in the album, download them independently.
 ```
-c:>soundload https://soundcloud.com/axxturel/sets/s-kkkult-s-kkkult-s-kkkkult
+c:>sl https://soundcloud.com/axxturel/sets/s-kkkult-s-kkkult-s-kkkkult
 ```
 
 ### Downloading cover art
@@ -72,7 +72,7 @@ should be noted that this option can be saved to cfg.json. This is useful for an
 underground music, where cover art is often changed or lost to time. The `-n-audio` arg is also used 
 and saved, preventing an MP3 from being downloaded.
 ```
-c:>soundload https://soundcloud.com/sellasouls/bdayy-sexxx -n-audio -art -save
+c:>sl https://soundcloud.com/sellasouls/bdayy-sexxx -n-audio -art -save
 ```
 
 ## Notes

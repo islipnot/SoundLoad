@@ -26,6 +26,20 @@ private:
 	std::string      streaming_url;
 	std::vector<int> track_ids;
 
+	std::wstring art_src;
+	std::string  artwork_url;
+	std::string  artist_pfp_url;
+
+	std::wstring description;
+	std::wstring genre;
+	std::wstring album;
+	std::wstring artist;
+	std::wstring title;
+	UINT         year = 0u;
+	UINT         num  = 0u;
+
+	int id = 0;
+
 	//
 	//// PRIVATE METHODS
 	//
@@ -56,20 +70,6 @@ public:
 
 	upload_flags_t f = {};
 
-	std::wstring art_src;
-	std::string  artwork_url;
-	std::string  artist_pfp_url;
-
-	std::wstring description;
-	std::wstring genre;
-	std::wstring album;
-	std::wstring artist;
-	std::wstring title;
-	UINT         year = 0u;
-	UINT         num  = 0u;
-
-	int id = 0;
-
 	//
 	//// PUBLIC MEMBER FUNCTIONS
 	//
@@ -82,11 +82,23 @@ public:
 
 	bool download()
 	{
-		if (cfg::f.download_art_seperate && !this->download_cover())
-			return false;
+		if (cfg::f.download_art_seperate)
+		{
+			if (!this->download_cover())
+			{
+				return false;
+			}
+
+			if (cfg::f.disable_audio_download)
+			{
+				std::cout << "WARNING: only downloaded cover art\n";
+			}
+		}
 
 		if (cfg::f.disable_audio_download)
+		{
 			return true;
+		}
 
 		return this->f.is_track ? this->download_track() : this->download_album();
 	}
