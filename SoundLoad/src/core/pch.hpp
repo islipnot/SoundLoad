@@ -1,6 +1,4 @@
 #pragma once
-#pragma comment(lib, "cpr/cpr.lib")
-#pragma comment(lib, "taglib/tag.lib")
 
 #define WIN32_LEAN_AND_MEAN
 

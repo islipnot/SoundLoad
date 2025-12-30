@@ -7,19 +7,6 @@ struct sc_upload
 private:
 
 	//
-	//// PRIVATE TYPES
-	//
-
-	struct upload_flags_t
-	{
-		USHORT error_occured : 1; // An error occured in the constructor
-		USHORT is_track      : 1; // Object represents a singular track
-		USHORT is_album      : 1; // Object represents an album or playlist
-		USHORT is_m4a_media  : 1; // Lossless media transcoding (.m3u8 -> .m4a)
-		USHORT is_hls_mpeg   : 1; // HLS media transcoding (.m3u -> .mp3)
-	};
-
-	//
 	//// PRIVATE MEMBER VARIABLES
 	//
 
@@ -68,7 +55,14 @@ public:
 	//// PUBLIC MEMBER VARIABLES
 	//
 
-	upload_flags_t f = {};
+	struct
+	{
+		USHORT error_occured : 1; // An error occured in the constructor
+		USHORT is_track      : 1; // Object represents a singular track
+		USHORT is_album      : 1; // Object represents an album or playlist
+		USHORT is_m4a_media  : 1; // Lossless media transcoding (.m3u8 -> .m4a)
+		USHORT is_hls_mpeg   : 1; // HLS media transcoding (.m3u -> .mp3)
+	} f = {};
 
 	//
 	//// PUBLIC MEMBER FUNCTIONS

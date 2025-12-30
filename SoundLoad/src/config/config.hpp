@@ -19,10 +19,10 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(cfg_format, cid, art_out_dir, track_out_dir, 
 namespace cfg
 {
 	//
-	//// TYPES
+	//// GLOBAL CONFIG VARIABLES
 	//
 
-	struct cfg_flags_t
+	struct
 	{
 		UINT add_to_path            : 1; // Adds program to PATH variables
 		UINT save_config            : 1; // Saves applicable arguments to config
@@ -38,9 +38,9 @@ namespace cfg
 		UINT no_arg_data_provided   : 1; // No variable was provided following an argument where its expected (e.g. '-title' used without providing title)
 		UINT invalid_data_provided  : 1; // A non-numeric variable was provided following an argument where its expected (e.g. '-year' used without a numeric value provided)
 		UINT config_just_created    : 1; // cfg.json was just created
-	};
+	} inline f = {}; // Flags
 
-	struct track_data
+	struct
 	{
 		// Output data
 
@@ -55,23 +55,15 @@ namespace cfg
 		std::wstring album_artists;   // album artist
 		std::wstring album;
 		std::wstring genre;
-		UINT         number = 0u; // track number (for albums)
-		UINT         year   = 0u;
-	};
-
-	//
-	//// GLOBAL CONFIG VARIABLES
-	//
-
-	inline cfg_flags_t f = {}; // Flags
+		UINT         number = 0U; // track number (for albums)
+		UINT         year   = 0U;
+	} inline g_data = {};
 
 	inline std::string  client_id;     // SoundCloud client ID
 	inline std::wstring audio_out_dir; // Audio download directory
 	inline std::wstring image_out_dir; // Cover art download directory
 	inline std::wstring image_src;     // Audio cover art source (file path, soundcloud track link, or image link)
 	inline std::wstring program_dir;   // SoundCloud.exe directory (used to open config and add to PATH variables)
-
-	inline track_data g_data = {}; // Track data specified in arguments, mostly for singular audio downloads
 
 	//
 	//// FORWARD DECLARATIONS
