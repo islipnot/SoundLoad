@@ -467,8 +467,6 @@ sc_upload::sc_upload(std::wstring url)
 	{
 		// Getting title
 
-		std::cout << (void*)cfg::g_data.title.c_str() << '\n';
-
 		if (cfg::g_data.title.empty())
 		{
 			mb_to_wide(post_data.value("title"), this->title);
