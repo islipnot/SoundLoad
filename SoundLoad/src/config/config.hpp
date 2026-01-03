@@ -22,7 +22,7 @@ namespace cfg
 	//// GLOBAL CONFIG VARIABLES
 	//
 
-	struct
+	struct cfg_flags_t
 	{
 		UINT add_to_path            : 1; // Adds program to PATH variables
 		UINT save_config            : 1; // Saves applicable arguments to config
@@ -38,9 +38,9 @@ namespace cfg
 		UINT no_arg_data_provided   : 1; // No variable was provided following an argument where its expected (e.g. '-title' used without providing title)
 		UINT invalid_data_provided  : 1; // A non-numeric variable was provided following an argument where its expected (e.g. '-year' used without a numeric value provided)
 		UINT config_just_created    : 1; // cfg.json was just created
-	} inline f = {}; // Flags
+	} f = {}; // Flags
 
-	struct
+	struct track_data_t
 	{
 		// Output data
 

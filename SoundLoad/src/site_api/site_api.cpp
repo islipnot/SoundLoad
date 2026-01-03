@@ -312,7 +312,7 @@ bool sc_upload::get_streaming_url(const Json& json)
 				const auto format = transcoding["format"];
 				const bool hls = format["protocol"] == "hls";
 
-				if (!hls || format["mime_type"] == "audio/mpeg")
+				if (format["protocol"] == "progressive" || format["mime_type"] == "audio/mpeg")
 				{
 					is_hls = hls;
 
@@ -466,6 +466,8 @@ sc_upload::sc_upload(std::wstring url)
 	
 	{
 		// Getting title
+
+		std::cout << (void*)cfg::g_data.title.c_str() << '\n';
 
 		if (cfg::g_data.title.empty())
 		{
